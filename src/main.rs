@@ -6,14 +6,13 @@ use gtk::prelude::*;
 use gtk::{Button, Orientation, Paned, SearchEntry, Window, WindowType};
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::thread;
 use std::sync::mpsc;
 use std::env;
 
 mod models;
 mod views;
 
-fn start_client() -> comm::client::TaskSender {
+fn start_client() -> (comm::client::TaskSender, mpsc::Receiver<comm::client::Event>) {
     use comm::*;
 
     let args: Vec<String> = env::args().collect();
@@ -36,18 +35,12 @@ fn start_client() -> comm::client::TaskSender {
     client.register_event_listener(event_sender);
     let client_channel = client.run(network);
 
-    thread::spawn(move || {
-        for event in events {
-            println!("Event: {:?}", event);
-        }
-    });
-
-    client_channel
+    (client_channel, events)
 }
 
 fn main() {
     env_logger::init().unwrap();
-    let client_commands = start_client();
+    let (client_commands, client_events) = start_client();
 
     if gtk::init().is_err() {
         println!("Failed to initialize GTK.");
@@ -104,6 +97,13 @@ fn main() {
     });
 
     main_window.show_all();
+
+    gtk::idle_add(move || {
+        if let Ok(event) = client_events.try_recv() {
+            println!("Event: {:?}", event);
+        }
+        gtk::Continue(true)
+    });
 
     gtk::main();
 }

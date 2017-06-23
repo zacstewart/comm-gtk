@@ -1,3 +1,4 @@
+extern crate env_logger;
 extern crate comm;
 extern crate gtk;
 
@@ -10,6 +11,8 @@ mod models;
 mod views;
 
 fn main() {
+    env_logger::init().unwrap();
+
     if gtk::init().is_err() {
         println!("Failed to initialize GTK.");
         return;

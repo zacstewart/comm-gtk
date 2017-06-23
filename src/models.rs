@@ -2,18 +2,21 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use comm::address::Address;
+use comm;
 
 #[derive(Debug)]
 pub struct Conversation {
     recipient: Option<Address>,
-    pending_message: String
+    pending_message: String,
+    client_commands: comm::client::TaskSender
 }
 
 impl Conversation {
-    pub fn new() -> Conversation {
+    pub fn new(client_commands: comm::client::TaskSender) -> Conversation {
         Conversation {
             recipient: None,
-            pending_message: String::new()
+            pending_message: String::new(),
+            client_commands: client_commands
         }
     }
 
@@ -35,7 +38,11 @@ impl Conversation {
 
     pub fn send_message(&mut self) {
         if let Some(recipient) = self.recipient {
-            println!("[{}] -> {}", recipient, self.pending_message);
+            let text_message = comm::client::messages::TextMessage::new(recipient, self.pending_message.clone());
+            self.client_commands
+                .send(comm::client::Task::ScheduleMessageDelivery(recipient, text_message))
+                .expect("Couldn't send message");
+
             self.pending_message = String::new();
         }
     }

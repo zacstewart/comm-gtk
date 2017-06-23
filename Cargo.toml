@@ -1,0 +1,15 @@
+[package]
+name = "comm-gtk"
+version = "0.1.0"
+authors = ["Zac Stewart <zgstewart@gmail.com>"]
+
+[dependencies.comm]
+#path = "../comm-rs"
+git = "https://github.com/zacstewart/comm.git"
+
+[dependencies]
+gio = "0.1.3"
+
+[dependencies.gtk]
+version = "0.1.3"
+features = ["v3_22"]

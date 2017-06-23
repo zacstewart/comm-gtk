@@ -9,7 +9,9 @@ use models;
 
 pub struct Conversation {
     address: gtk::Entry,
-    widget: gtk::Box
+    widget: gtk::Box,
+    message: gtk::Entry,
+    send_button: gtk::Button
 }
 
 impl Conversation {
@@ -17,14 +19,21 @@ impl Conversation {
         let widget = gtk::Box::new(gtk::Orientation::Vertical, 0);
         let address = gtk::Entry::new();
         let transcript = gtk::Stack::new();
+        let send_button = gtk::Button::new_with_label("Send");
         let message = gtk::Entry::new();
+        let send_pane = gtk::Paned::new(gtk::Orientation::Horizontal);
+        send_pane.set_position(300);
+        send_pane.add1(&message);
+        send_pane.add2(&send_button);
         widget.pack_start(&address, false, false, 0);
         widget.pack_start(&transcript, true, true, 0);
-        widget.pack_start(&message, false, false, 0);
+        widget.pack_start(&send_pane, false, false, 0);
 
         Conversation {
             address: address,
-            widget: widget
+            widget: widget,
+            message: message,
+            send_button: send_button
         }
     }
 
@@ -38,6 +47,7 @@ impl Conversation {
             Some(address) => self.address.set_text(&address.to_str()),
             None => self.address.delete_text(0, -1)
         }
+        self.message.set_text(conversation.borrow().pending_message());
 
         // Connection UI events
         let c = conversation.clone();
@@ -47,6 +57,17 @@ impl Conversation {
                 let address = address::Address::from_str(&text);
                 c.borrow_mut().set_recipient(address);
             }
+        });
+
+        let c = conversation.clone();
+        self.message.connect_preedit_changed(move |entry, _| {
+            let text = entry.get_text().unwrap();
+            c.borrow_mut().set_pending_message(text);
+        });
+
+        let c = conversation.clone();
+        self.send_button.connect_clicked(move |_| {
+            c.borrow_mut().send_message();
         });
     }
 }

@@ -25,15 +25,14 @@ impl ConversationRecipient {
 
         match conversation.borrow().recipient() {
             Some(address) => controller.borrow().view().set_text(&address.to_str()),
-            None => controller.borrow().view().delete_text(0, -1)
+            None => controller.borrow().view().set_text("New Conversation")
         }
 
-        let c = conversation.clone();
         controller.borrow().view().connect_preedit_changed(move |entry, _| {
             let text = entry.get_text().unwrap();
             if text.len() == 40 {
                 let address = address::Address::from_str(&text);
-                c.borrow_mut().set_recipient(address);
+                conversation.borrow_mut().set_recipient(address);
             }
         });
 
@@ -104,7 +103,7 @@ pub struct ConversationListItemTitle {
 
 impl ConversationListItemTitle {
     pub fn new(conversation: Rc<RefCell<models::Conversation>>) -> Rc<RefCell<ConversationListItemTitle>> {
-        let view = gtk::Label::new_with_mnemonic(Some("Conversation"));
+        let view = gtk::Label::new_with_mnemonic(Some("New Conversation"));
         let controller = Rc::new(RefCell::new(ConversationListItemTitle {
             view: view
         }));

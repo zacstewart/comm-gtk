@@ -3,22 +3,20 @@ use gtk::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use comm;
 use comm::address;
 
 use models;
 use models::{Observable, ConversationListObserver};
 
 pub struct Conversation {
-    address: gtk::Entry,
     view: gtk::Box,
-    message: gtk::Entry,
-    send_button: gtk::Button
 }
 
 impl Conversation {
-    pub fn new() -> Conversation {
+    pub fn new(conversation: Rc<RefCell<models::Conversation>>) -> Conversation {
         let view = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        let address = gtk::Entry::new();
+        let recipient = gtk::Entry::new();
         let transcript = gtk::Stack::new();
         let send_button = gtk::Button::new_with_label("Send");
         let message = gtk::Entry::new();
@@ -26,33 +24,24 @@ impl Conversation {
         send_pane.set_position(300);
         send_pane.add1(&message);
         send_pane.add2(&send_button);
-        view.pack_start(&address, false, false, 0);
+        view.pack_start(&recipient, false, false, 0);
         view.pack_start(&transcript, true, true, 0);
         view.pack_start(&send_pane, false, false, 0);
 
-        Conversation {
-            address: address,
+        let controller = Conversation {
             view: view,
-            message: message,
-            send_button: send_button
-        }
-    }
+        };
 
-    pub fn view(&self) -> &gtk::Box {
-        &self.view
-    }
-
-    pub fn set_conversation(&self, conversation: &Rc<RefCell<models::Conversation>>) {
         // Initialize UI widgets
         match conversation.borrow().recipient() {
-            Some(address) => self.address.set_text(&address.to_str()),
-            None => self.address.delete_text(0, -1)
+            Some(address) => recipient.set_text(&address.to_str()),
+            None => recipient.delete_text(0, -1)
         }
-        self.message.set_text(conversation.borrow().pending_message());
+        message.set_text(conversation.borrow().pending_message());
 
         // Connection UI events
         let c = conversation.clone();
-        self.address.connect_preedit_changed(move |entry, _| {
+        recipient.connect_preedit_changed(move |entry, _| {
             let text = entry.get_text().unwrap();
             if text.len() == 40 {
                 let address = address::Address::from_str(&text);
@@ -61,15 +50,21 @@ impl Conversation {
         });
 
         let c = conversation.clone();
-        self.message.connect_preedit_changed(move |entry, _| {
+        message.connect_preedit_changed(move |entry, _| {
             let text = entry.get_text().unwrap();
             c.borrow_mut().set_pending_message(text);
         });
 
         let c = conversation.clone();
-        self.send_button.connect_clicked(move |_| {
+        send_button.connect_clicked(move |_| {
             c.borrow_mut().send_message();
         });
+
+        controller
+    }
+
+    pub fn view(&self) -> &gtk::Box {
+        &self.view
     }
 }
 
@@ -140,5 +135,61 @@ impl ConversationListObserver for ConversationList {
 
     fn conversation_was_selected(&self, conversation: Rc<RefCell<models::Conversation>>) {
         println!("conversation_was_selected: {:?}", conversation);
+    }
+}
+
+pub struct Conversations {
+    view: gtk::Paned
+}
+
+impl Conversations {
+    pub fn new(model: Rc<RefCell<models::ConversationList>>,
+               client_commands: comm::client::TaskSender) -> Rc<RefCell<Conversations>> {
+        let controller = Rc::new(RefCell::new(Conversations {
+            view: gtk::Paned::new(gtk::Orientation::Horizontal)
+        }));
+
+        controller.borrow().view().set_position(200);
+
+        let sidebar_pane = gtk::Paned::new(gtk::Orientation::Vertical);
+        controller.borrow().view().add1(&sidebar_pane);
+        let search_add_pane = gtk::Paned::new(gtk::Orientation::Horizontal);
+
+        let search = gtk::SearchEntry::new();
+        let new_contact_button = gtk::Button::new_from_icon_name("contact-new", 2);
+
+        search_add_pane.pack1(&search, true, true);
+        search_add_pane.pack2(&new_contact_button, false, false);
+
+        let conversation_list_controller = ConversationList::new(model.clone());
+
+        sidebar_pane.pack1(&search_add_pane, false, false);
+        sidebar_pane.add2(conversation_list_controller.borrow().view());
+        new_contact_button.connect_clicked(move |_| {
+            let conversation = Rc::new(RefCell::new(models::Conversation::new(client_commands.clone())));
+            conversation_list_controller.borrow().add_conversation(conversation);
+        });
+
+        model.borrow_mut().register_observer(controller.clone());
+
+        controller
+    }
+
+    pub fn view(&self) -> &gtk::Paned {
+        &self.view
+    }
+}
+
+impl ConversationListObserver for Conversations {
+    fn conversation_was_added(&self, _: Rc<RefCell<models::Conversation>>) {
+    }
+
+    fn conversation_was_selected(&self, conversation: Rc<RefCell<models::Conversation>>) {
+        let conversation_controller = Conversation::new(conversation);
+        if let Some(widget) = self.view.get_child2() {
+            widget.destroy();
+        }
+        self.view.add2(conversation_controller.view());
+        self.view.show_all();
     }
 }

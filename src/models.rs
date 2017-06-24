@@ -77,7 +77,7 @@ impl ConversationList {
     }
 
     pub fn select_conversation(&self, index: usize) {
-        let conversation = self.conversations.get(index).unwrap();
+        let conversation = self.get(index).unwrap();
         for observer in self.observers.iter() {
             observer.borrow().conversation_was_selected(conversation.clone());
         }

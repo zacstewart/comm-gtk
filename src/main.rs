@@ -3,7 +3,6 @@ extern crate comm;
 extern crate gtk;
 
 use gtk::prelude::*;
-use gtk::{Button, Orientation, Paned, SearchEntry, Window, WindowType};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::mpsc;
@@ -49,7 +48,7 @@ fn main() {
 
     let conversations = Rc::new(RefCell::new(models::ConversationList::new()));
 
-    let main_window = Window::new(WindowType::Toplevel);
+    let main_window = gtk::Window::new(gtk::WindowType::Toplevel);
     main_window.set_title("Comm Messenger");
     main_window.set_default_size(600, 350);
     main_window.set_position(gtk::WindowPosition::Center);
@@ -58,44 +57,8 @@ fn main() {
         Inhibit(false)
     });
 
-
-    let main_pane = Paned::new(Orientation::Horizontal);
-    main_pane.set_position(200);
-    let sidebar_pane = Paned::new(Orientation::Vertical);
-    main_pane.add1(&sidebar_pane);
-    let search_add_pane = Paned::new(Orientation::Horizontal);
-
-    main_window.add(&main_pane);
-
-    let search = SearchEntry::new();
-    let button = Button::new_from_icon_name("contact-new", 2);
-
-    let conversations_controller = controllers::ConversationList::new(conversations.clone());
-
-    conversations_controller.borrow().view().connect_row_selected(move |_, list_item| {
-        let index = list_item.as_ref().unwrap().get_index() as usize;
-
-        let list = conversations.borrow();
-        let conversation_controller = controllers::Conversation::new();
-        conversation_controller.set_conversation(list.get(index).unwrap());
-        if let Some(widget) = main_pane.get_child2() {
-            widget.destroy();
-        }
-        main_pane.add2(conversation_controller.view());
-        main_pane.show_all();
-    });
-
-    search_add_pane.pack1(&search, true, true);
-    search_add_pane.pack2(&button, false, false);
-
-    sidebar_pane.pack1(&search_add_pane, false, false);
-    sidebar_pane.add2(conversations_controller.borrow().view());
-
-
-    button.connect_clicked(move |_| {
-        let conversation = Rc::new(RefCell::new(models::Conversation::new(client_commands.clone())));
-        conversations_controller.borrow().add_conversation(conversation);
-    });
+    let conversations_controller = controllers::Conversations::new(conversations, client_commands);
+    main_window.add(conversations_controller.borrow().view());
 
     main_window.show_all();
 

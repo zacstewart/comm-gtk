@@ -6,17 +6,18 @@ use std::rc::Rc;
 use comm::address;
 
 use models;
+use models::{Observable, ConversationListObserver};
 
 pub struct Conversation {
     address: gtk::Entry,
-    widget: gtk::Box,
+    view: gtk::Box,
     message: gtk::Entry,
     send_button: gtk::Button
 }
 
 impl Conversation {
     pub fn new() -> Conversation {
-        let widget = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        let view = gtk::Box::new(gtk::Orientation::Vertical, 0);
         let address = gtk::Entry::new();
         let transcript = gtk::Stack::new();
         let send_button = gtk::Button::new_with_label("Send");
@@ -25,20 +26,20 @@ impl Conversation {
         send_pane.set_position(300);
         send_pane.add1(&message);
         send_pane.add2(&send_button);
-        widget.pack_start(&address, false, false, 0);
-        widget.pack_start(&transcript, true, true, 0);
-        widget.pack_start(&send_pane, false, false, 0);
+        view.pack_start(&address, false, false, 0);
+        view.pack_start(&transcript, true, true, 0);
+        view.pack_start(&send_pane, false, false, 0);
 
         Conversation {
             address: address,
-            widget: widget,
+            view: view,
             message: message,
             send_button: send_button
         }
     }
 
-    pub fn widget(&self) -> &gtk::Box {
-        &self.widget
+    pub fn view(&self) -> &gtk::Box {
+        &self.view
     }
 
     pub fn set_conversation(&self, conversation: &Rc<RefCell<models::Conversation>>) {
@@ -73,48 +74,71 @@ impl Conversation {
 }
 
 pub struct ConversationListItem {
-    widget: gtk::ListBoxRow
+    view: gtk::ListBoxRow
 }
 
 impl ConversationListItem {
     pub fn new(_conversation: Rc<RefCell<models::Conversation>>) -> ConversationListItem {
         // TODO: connect some event listener thing on the conversation
         // to update this view when it changes.
-        let widget = gtk::ListBoxRow::new();
+        let view = gtk::ListBoxRow::new();
         let label = gtk::Label::new_with_mnemonic(Some("Conversation"));
-        widget.add(&label);
+        view.add(&label);
 
         ConversationListItem {
-            widget: widget
+            view: view
         }
     }
 
-    pub fn widget(&self) -> &gtk::ListBoxRow {
-        &self.widget
+    pub fn view(&self) -> &gtk::ListBoxRow {
+        &self.view
     }
 }
 
 pub struct ConversationList {
-    repo: Rc<RefCell<models::ConversationList>>,
-    widget: gtk::ListBox
+    model: Rc<RefCell<models::ConversationList>>,
+    view: gtk::ListBox
 }
 
 impl ConversationList {
-    pub fn new(repo: Rc<RefCell<models::ConversationList>>) -> ConversationList {
-        ConversationList {
-            repo: repo,
-            widget: gtk::ListBox::new()
-        }
+    pub fn new(model: Rc<RefCell<models::ConversationList>>) -> Rc<RefCell<ConversationList>> {
+        let controller = Rc::new(RefCell::new(ConversationList {
+            model: model.clone(),
+            view: gtk::ListBox::new()
+        }));
+
+        let c = controller.clone();
+        controller.borrow().view().connect_row_selected(move |_, list_item| {
+            let index = list_item.as_ref().unwrap().get_index() as usize;
+            c.borrow().select_conversation(index);
+        });
+
+        model.borrow_mut().register_observer(controller.clone());
+
+        controller
     }
 
     pub fn add_conversation(&self, conversation: Rc<RefCell<models::Conversation>>) {
-        self.repo.borrow_mut().prepend(conversation.clone());
-        let list_item = ConversationListItem::new(conversation.clone());
-        self.widget.prepend(list_item.widget());
-        list_item.widget().show_all();
+        self.model.borrow_mut().prepend(conversation.clone());
     }
 
-    pub fn widget(&self) -> &gtk::ListBox {
-        &self.widget
+    pub fn select_conversation(&self, index: usize) {
+        self.model.borrow().select_conversation(index);
+    }
+
+    pub fn view(&self) -> &gtk::ListBox {
+        &self.view
+    }
+}
+
+impl ConversationListObserver for ConversationList {
+    fn conversation_was_added(&self, conversation: Rc<RefCell<models::Conversation>>) {
+        let list_item = ConversationListItem::new(conversation);
+        self.view.prepend(list_item.view());
+        list_item.view().show_all();
+    }
+
+    fn conversation_was_selected(&self, conversation: Rc<RefCell<models::Conversation>>) {
+        println!("conversation_was_selected: {:?}", conversation);
     }
 }

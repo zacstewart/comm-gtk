@@ -4,6 +4,10 @@ use std::rc::Rc;
 use comm::address::Address;
 use comm;
 
+pub trait Observable<O> {
+    fn register_observer(&mut self, observer: O);
+}
+
 #[derive(Debug)]
 pub struct Conversation {
     recipient: Option<Address>,
@@ -49,21 +53,44 @@ impl Conversation {
 }
 
 pub struct ConversationList {
-    conversations: Vec<Rc<RefCell<Conversation>>>
+    conversations: Vec<Rc<RefCell<Conversation>>>,
+    observers: Vec<Rc<RefCell<ConversationListObserver>>>
 }
 
 impl ConversationList {
     pub fn new() -> ConversationList {
         ConversationList {
-            conversations: vec![]
+            conversations: vec![],
+            observers: vec![]
         }
     }
 
     pub fn prepend(&mut self, conversation: Rc<RefCell<Conversation>>) {
-        self.conversations.insert(0, conversation);
+        self.conversations.insert(0, conversation.clone());
+        for observer in self.observers.iter() {
+            observer.borrow().conversation_was_added(conversation.clone());
+        }
     }
 
     pub fn get(&self, index: usize) -> Option<&Rc<RefCell<Conversation>>> {
         self.conversations.get(index)
     }
+
+    pub fn select_conversation(&self, index: usize) {
+        let conversation = self.conversations.get(index).unwrap();
+        for observer in self.observers.iter() {
+            observer.borrow().conversation_was_selected(conversation.clone());
+        }
+    }
+}
+
+impl Observable<Rc<RefCell<ConversationListObserver>>> for ConversationList {
+    fn register_observer(&mut self, observer: Rc<RefCell<ConversationListObserver>>) {
+        self.observers.push(observer);
+    }
+}
+
+pub trait ConversationListObserver {
+    fn conversation_was_added(&self, Rc<RefCell<Conversation>>);
+    fn conversation_was_selected(&self, Rc<RefCell<Conversation>>);
 }

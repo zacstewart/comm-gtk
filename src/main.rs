@@ -10,7 +10,7 @@ use std::sync::mpsc;
 use std::env;
 
 mod models;
-mod views;
+mod controllers;
 
 fn start_client() -> (comm::client::TaskSender, mpsc::Receiver<comm::client::Event>) {
     use comm::*;
@@ -70,17 +70,18 @@ fn main() {
     let search = SearchEntry::new();
     let button = Button::new_from_icon_name("contact-new", 2);
 
-    let conversation_list = views::ConversationList::new(conversations.clone());
+    let conversations_controller = controllers::ConversationList::new(conversations.clone());
 
-    conversation_list.widget().connect_row_selected(move |_, list_item| {
-        let conversation_view = views::Conversation::new();
-        let index = list_item.as_ref().unwrap().get_index();
+    conversations_controller.borrow().view().connect_row_selected(move |_, list_item| {
+        let index = list_item.as_ref().unwrap().get_index() as usize;
+
         let list = conversations.borrow();
-        conversation_view.set_conversation(list.get(index as usize).unwrap());
+        let conversation_controller = controllers::Conversation::new();
+        conversation_controller.set_conversation(list.get(index).unwrap());
         if let Some(widget) = main_pane.get_child2() {
             widget.destroy();
         }
-        main_pane.add2(conversation_view.widget());
+        main_pane.add2(conversation_controller.view());
         main_pane.show_all();
     });
 
@@ -88,12 +89,12 @@ fn main() {
     search_add_pane.pack2(&button, false, false);
 
     sidebar_pane.pack1(&search_add_pane, false, false);
-    sidebar_pane.add2(conversation_list.widget());
+    sidebar_pane.add2(conversations_controller.borrow().view());
 
 
     button.connect_clicked(move |_| {
         let conversation = Rc::new(RefCell::new(models::Conversation::new(client_commands.clone())));
-        conversation_list.add_conversation(conversation);
+        conversations_controller.borrow().add_conversation(conversation);
     });
 
     main_window.show_all();

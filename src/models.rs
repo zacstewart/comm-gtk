@@ -73,13 +73,15 @@ impl Observable<Rc<RefCell<ConversationObserver>>> for Conversation {
 
 pub struct ConversationList {
     conversations: Vec<Rc<RefCell<Conversation>>>,
+    client_commands: comm::client::TaskSender,
     observers: Vec<Rc<RefCell<ConversationListObserver>>>
 }
 
 impl ConversationList {
-    pub fn new() -> ConversationList {
+    pub fn new(client_commands: comm::client::TaskSender) -> ConversationList {
         ConversationList {
             conversations: vec![],
+            client_commands: client_commands,
             observers: vec![]
         }
     }
@@ -99,6 +101,23 @@ impl ConversationList {
         let conversation = self.get(index).unwrap();
         for observer in self.observers.iter() {
             observer.borrow().conversation_was_selected(conversation.clone());
+        }
+    }
+
+    pub fn handle_event(&mut self, event: comm::client::Event) {
+        match event {
+            comm::client::Event::ReceivedTextMessage(tm) => {
+                let existing_conversation = self.conversations.iter().any(|conversation| {
+                    conversation.borrow().recipient() == Some(tm.sender)
+                }).clone();
+                if existing_conversation {
+                } else {
+                    let mut c = Conversation::new(self.client_commands.clone());
+                    c.set_recipient(tm.sender);
+                    self.prepend(Rc::new(RefCell::new(c)));
+                }
+            }
+            _ => { }
         }
     }
 }

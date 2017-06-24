@@ -46,7 +46,7 @@ fn main() {
         return;
     }
 
-    let conversations = Rc::new(RefCell::new(models::ConversationList::new()));
+    let conversations = Rc::new(RefCell::new(models::ConversationList::new(client_commands.clone())));
 
     let main_window = gtk::Window::new(gtk::WindowType::Toplevel);
     main_window.set_title("Comm Messenger");
@@ -57,14 +57,14 @@ fn main() {
         Inhibit(false)
     });
 
-    let conversations_controller = controllers::Conversations::new(conversations, client_commands);
+    let conversations_controller = controllers::Conversations::new(conversations.clone(), client_commands);
     main_window.add(conversations_controller.borrow().view());
 
     main_window.show_all();
 
     gtk::idle_add(move || {
         if let Ok(event) = client_events.try_recv() {
-            println!("Event: {:?}", event);
+            conversations.borrow_mut().handle_event(event);
         }
         gtk::Continue(true)
     });

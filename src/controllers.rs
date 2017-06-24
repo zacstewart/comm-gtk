@@ -103,10 +103,15 @@ pub struct ConversationListItemTitle {
 
 impl ConversationListItemTitle {
     pub fn new(conversation: Rc<RefCell<models::Conversation>>) -> Rc<RefCell<ConversationListItemTitle>> {
-        let view = gtk::Label::new_with_mnemonic(Some("New Conversation"));
+        let view = gtk::Label::new("");
         let controller = Rc::new(RefCell::new(ConversationListItemTitle {
             view: view
         }));
+
+        match conversation.borrow().recipient() {
+            None => controller.borrow().view().set_text("New Conversation"),
+            Some(address) => controller.borrow().view().set_text(&address.to_str())
+        };
 
         conversation.borrow_mut().register_observer(controller.clone());
 

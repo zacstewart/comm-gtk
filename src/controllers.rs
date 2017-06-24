@@ -7,16 +7,58 @@ use comm;
 use comm::address;
 
 use models;
-use models::{Observable, ConversationListObserver};
+use models::{ConversationListObserver, ConversationObserver, Observable};
+
+pub struct ConversationRecipient {
+    view: gtk::Entry
+}
+
+impl ConversationRecipient {
+    pub fn new(conversation: Rc<RefCell<models::Conversation>>) -> Rc<RefCell<ConversationRecipient>> {
+        let view = gtk::Entry::new();
+
+        let controller = Rc::new(RefCell::new(ConversationRecipient {
+            view: view
+        }));
+
+        conversation.borrow_mut().register_observer(controller.clone());
+
+        match conversation.borrow().recipient() {
+            Some(address) => controller.borrow().view().set_text(&address.to_str()),
+            None => controller.borrow().view().delete_text(0, -1)
+        }
+
+        let c = conversation.clone();
+        controller.borrow().view().connect_preedit_changed(move |entry, _| {
+            let text = entry.get_text().unwrap();
+            if text.len() == 40 {
+                let address = address::Address::from_str(&text);
+                c.borrow_mut().set_recipient(address);
+            }
+        });
+
+        controller
+    }
+
+    pub fn view(&self) -> &gtk::Entry {
+        &self.view
+    }
+}
+
+impl ConversationObserver for ConversationRecipient {
+    fn recipient_was_changed(&self, address: comm::address::Address) {
+        self.view.set_text(&address.to_str());
+    }
+}
 
 pub struct Conversation {
-    view: gtk::Box,
+    view: gtk::Box
 }
 
 impl Conversation {
-    pub fn new(conversation: Rc<RefCell<models::Conversation>>) -> Conversation {
+    pub fn new(conversation: Rc<RefCell<models::Conversation>>) -> Rc<RefCell<Conversation>> {
         let view = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        let recipient = gtk::Entry::new();
+        let recipient_controller = ConversationRecipient::new(conversation.clone());
         let transcript = gtk::Stack::new();
         let send_button = gtk::Button::new_with_label("Send");
         let message = gtk::Entry::new();
@@ -24,30 +66,18 @@ impl Conversation {
         send_pane.set_position(300);
         send_pane.add1(&message);
         send_pane.add2(&send_button);
-        view.pack_start(&recipient, false, false, 0);
+        view.pack_start(recipient_controller.borrow().view(), false, false, 0);
         view.pack_start(&transcript, true, true, 0);
         view.pack_start(&send_pane, false, false, 0);
 
-        let controller = Conversation {
+        let controller = Rc::new(RefCell::new(Conversation {
             view: view,
-        };
+        }));
 
         // Initialize UI widgets
-        match conversation.borrow().recipient() {
-            Some(address) => recipient.set_text(&address.to_str()),
-            None => recipient.delete_text(0, -1)
-        }
         message.set_text(conversation.borrow().pending_message());
 
         // Connection UI events
-        let c = conversation.clone();
-        recipient.connect_preedit_changed(move |entry, _| {
-            let text = entry.get_text().unwrap();
-            if text.len() == 40 {
-                let address = address::Address::from_str(&text);
-                c.borrow_mut().set_recipient(address);
-            }
-        });
 
         let c = conversation.clone();
         message.connect_preedit_changed(move |entry, _| {
@@ -68,21 +98,57 @@ impl Conversation {
     }
 }
 
+pub struct ConversationListItemTitle {
+    view: gtk::Label
+}
+
+impl ConversationListItemTitle {
+    pub fn new(conversation: Rc<RefCell<models::Conversation>>) -> Rc<RefCell<ConversationListItemTitle>> {
+        let view = gtk::Label::new_with_mnemonic(Some("Conversation"));
+        let controller = Rc::new(RefCell::new(ConversationListItemTitle {
+            view: view
+        }));
+
+        conversation.borrow_mut().register_observer(controller.clone());
+
+        controller
+    }
+
+    pub fn view(&self) -> &gtk::Label {
+        &self.view
+    }
+}
+impl ConversationObserver for ConversationListItemTitle {
+    fn recipient_was_changed(&self, address: comm::address::Address) {
+        self.view.set_text(&address.to_str());
+    }
+}
+
 pub struct ConversationListItem {
     view: gtk::ListBoxRow
 }
 
+impl ConversationObserver for ConversationListItem {
+    fn recipient_was_changed(&self, _: comm::address::Address) {
+    }
+}
+
 impl ConversationListItem {
-    pub fn new(_conversation: Rc<RefCell<models::Conversation>>) -> ConversationListItem {
+    pub fn new(conversation: Rc<RefCell<models::Conversation>>) -> Rc<RefCell<ConversationListItem>> {
         // TODO: connect some event listener thing on the conversation
         // to update this view when it changes.
         let view = gtk::ListBoxRow::new();
-        let label = gtk::Label::new_with_mnemonic(Some("Conversation"));
-        view.add(&label);
 
-        ConversationListItem {
+        let title_controller = ConversationListItemTitle::new(conversation.clone());
+        view.add(title_controller.borrow().view());
+
+        let controller = Rc::new(RefCell::new(ConversationListItem {
             view: view
-        }
+        }));
+
+        conversation.borrow_mut().register_observer(controller.clone());
+
+        controller
     }
 
     pub fn view(&self) -> &gtk::ListBoxRow {
@@ -129,12 +195,11 @@ impl ConversationList {
 impl ConversationListObserver for ConversationList {
     fn conversation_was_added(&self, conversation: Rc<RefCell<models::Conversation>>) {
         let list_item = ConversationListItem::new(conversation);
-        self.view.prepend(list_item.view());
-        list_item.view().show_all();
+        self.view.prepend(list_item.borrow().view());
+        list_item.borrow().view().show_all();
     }
 
-    fn conversation_was_selected(&self, conversation: Rc<RefCell<models::Conversation>>) {
-        println!("conversation_was_selected: {:?}", conversation);
+    fn conversation_was_selected(&self, _: Rc<RefCell<models::Conversation>>) {
     }
 }
 
@@ -189,7 +254,7 @@ impl ConversationListObserver for Conversations {
         if let Some(widget) = self.view.get_child2() {
             widget.destroy();
         }
-        self.view.add2(conversation_controller.view());
+        self.view.add2(conversation_controller.borrow().view());
         self.view.show_all();
     }
 }

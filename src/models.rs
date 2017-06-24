@@ -8,11 +8,20 @@ pub trait Observable<O> {
     fn register_observer(&mut self, observer: O);
 }
 
-#[derive(Debug)]
+pub trait ConversationListObserver {
+    fn conversation_was_added(&self, Rc<RefCell<Conversation>>);
+    fn conversation_was_selected(&self, Rc<RefCell<Conversation>>);
+}
+
+pub trait ConversationObserver {
+    fn recipient_was_changed(&self, Address);
+}
+
 pub struct Conversation {
     recipient: Option<Address>,
     pending_message: String,
-    client_commands: comm::client::TaskSender
+    client_commands: comm::client::TaskSender,
+    observers: Vec<Rc<RefCell<ConversationObserver>>>
 }
 
 impl Conversation {
@@ -20,7 +29,8 @@ impl Conversation {
         Conversation {
             recipient: None,
             pending_message: String::new(),
-            client_commands: client_commands
+            client_commands: client_commands,
+            observers: vec![]
         }
     }
 
@@ -38,6 +48,9 @@ impl Conversation {
 
     pub fn set_recipient(&mut self, recipient: Address) {
         self.recipient = Some(recipient);
+        for observer in self.observers.iter() {
+            observer.borrow().recipient_was_changed(recipient);
+        }
     }
 
     pub fn send_message(&mut self) {
@@ -49,6 +62,12 @@ impl Conversation {
 
             self.pending_message = String::new();
         }
+    }
+}
+
+impl Observable<Rc<RefCell<ConversationObserver>>> for Conversation {
+    fn register_observer(&mut self, observer: Rc<RefCell<ConversationObserver>>) {
+        self.observers.push(observer);
     }
 }
 
@@ -88,9 +107,4 @@ impl Observable<Rc<RefCell<ConversationListObserver>>> for ConversationList {
     fn register_observer(&mut self, observer: Rc<RefCell<ConversationListObserver>>) {
         self.observers.push(observer);
     }
-}
-
-pub trait ConversationListObserver {
-    fn conversation_was_added(&self, Rc<RefCell<Conversation>>);
-    fn conversation_was_selected(&self, Rc<RefCell<Conversation>>);
 }

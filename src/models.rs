@@ -15,6 +15,7 @@ pub trait ConversationListObserver {
 
 pub trait ConversationObserver {
     fn recipient_was_changed(&self, Address);
+    fn pending_message_was_changed(&self, String);
     fn did_receive_message(&self, Rc<RefCell<Message>>);
 }
 
@@ -73,7 +74,10 @@ impl Conversation {
     }
 
     pub fn set_pending_message(&mut self, text: String) {
-        self.pending_message = text;
+        self.pending_message = text.clone();
+        for observer in self.observers.iter() {
+            observer.borrow().pending_message_was_changed(text.clone());
+        }
     }
 
     pub fn set_recipient(&mut self, recipient: Address) {
@@ -90,7 +94,7 @@ impl Conversation {
                 .send(comm::client::Task::ScheduleMessageDelivery(recipient, text_message))
                 .expect("Couldn't send message");
 
-            self.pending_message = String::new();
+            self.set_pending_message(String::new());
         }
     }
 }

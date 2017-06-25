@@ -69,6 +69,10 @@ impl Conversation {
         }
     }
 
+    pub fn messages(&self) -> &Vec<Rc<RefCell<Message>>> {
+        &self.messages
+    }
+
     pub fn pending_message(&self) -> &str {
         &self.pending_message
     }

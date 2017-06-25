@@ -213,6 +213,7 @@ pub struct Conversations {
 
 impl Conversations {
     pub fn new(model: Rc<RefCell<models::ConversationList>>,
+               self_address: comm::address::Address,
                client_commands: comm::client::TaskSender) -> Rc<RefCell<Conversations>> {
         let controller = Rc::new(RefCell::new(Conversations {
             view: gtk::Paned::new(gtk::Orientation::Horizontal)
@@ -235,7 +236,8 @@ impl Conversations {
         sidebar_pane.pack1(&search_add_pane, false, false);
         sidebar_pane.add2(conversation_list_controller.borrow().view());
         new_contact_button.connect_clicked(move |_| {
-            let conversation = Rc::new(RefCell::new(models::Conversation::new(client_commands.clone())));
+            let conversation = Rc::new(RefCell::new(models::Conversation::new(
+                self_address, client_commands.clone())));
             conversation_list_controller.borrow().add_conversation(conversation);
         });
 

@@ -11,7 +11,7 @@ use std::env;
 mod models;
 mod controllers;
 
-fn start_client() -> (comm::client::TaskSender, mpsc::Receiver<comm::client::Event>) {
+fn start_client() -> (comm::address::Address, comm::client::TaskSender, mpsc::Receiver<comm::client::Event>) {
     use comm::*;
 
     let args: Vec<String> = env::args().collect();
@@ -34,19 +34,19 @@ fn start_client() -> (comm::client::TaskSender, mpsc::Receiver<comm::client::Eve
     client.register_event_listener(event_sender);
     let client_channel = client.run(network);
 
-    (client_channel, events)
+    (address, client_channel, events)
 }
 
 fn main() {
     env_logger::init().unwrap();
-    let (client_commands, client_events) = start_client();
+    let (address, client_commands, client_events) = start_client();
 
     if gtk::init().is_err() {
         println!("Failed to initialize GTK.");
         return;
     }
 
-    let conversations = Rc::new(RefCell::new(models::ConversationList::new(client_commands.clone())));
+    let conversations = Rc::new(RefCell::new(models::ConversationList::new(address, client_commands.clone())));
 
     let main_window = gtk::Window::new(gtk::WindowType::Toplevel);
     main_window.set_title("Comm Messenger");
@@ -57,7 +57,7 @@ fn main() {
         Inhibit(false)
     });
 
-    let conversations_controller = controllers::Conversations::new(conversations.clone(), client_commands);
+    let conversations_controller = controllers::Conversations::new(conversations.clone(), address, client_commands);
     main_window.add(conversations_controller.borrow().view());
 
     main_window.show_all();

@@ -18,6 +18,7 @@ pub trait ConversationObserver {
 }
 
 pub struct Conversation {
+    self_address: Address,
     recipient: Option<Address>,
     pending_message: String,
     client_commands: comm::client::TaskSender,
@@ -25,8 +26,9 @@ pub struct Conversation {
 }
 
 impl Conversation {
-    pub fn new(client_commands: comm::client::TaskSender) -> Conversation {
+    pub fn new(self_address: comm::address::Address, client_commands: comm::client::TaskSender) -> Conversation {
         Conversation {
+            self_address: self_address,
             recipient: None,
             pending_message: String::new(),
             client_commands: client_commands,
@@ -55,7 +57,7 @@ impl Conversation {
 
     pub fn send_message(&mut self) {
         if let Some(recipient) = self.recipient {
-            let text_message = comm::client::messages::TextMessage::new(recipient, self.pending_message.clone());
+            let text_message = comm::client::messages::TextMessage::new(self.self_address, self.pending_message.clone());
             self.client_commands
                 .send(comm::client::Task::ScheduleMessageDelivery(recipient, text_message))
                 .expect("Couldn't send message");
@@ -72,14 +74,16 @@ impl Observable<Rc<RefCell<ConversationObserver>>> for Conversation {
 }
 
 pub struct ConversationList {
+    self_address: Address,
     conversations: Vec<Rc<RefCell<Conversation>>>,
     client_commands: comm::client::TaskSender,
     observers: Vec<Rc<RefCell<ConversationListObserver>>>
 }
 
 impl ConversationList {
-    pub fn new(client_commands: comm::client::TaskSender) -> ConversationList {
+    pub fn new(self_address: comm::address::Address, client_commands: comm::client::TaskSender) -> ConversationList {
         ConversationList {
+            self_address: self_address,
             conversations: vec![],
             client_commands: client_commands,
             observers: vec![]
@@ -112,9 +116,9 @@ impl ConversationList {
                 }).clone();
                 if existing_conversation {
                 } else {
-                    let mut c = Conversation::new(self.client_commands.clone());
                     c.set_recipient(tm.sender);
                     self.prepend(Rc::new(RefCell::new(c)));
+                    let c = Rc::new(RefCell::new(Conversation::new(self.self_address, self.client_commands.clone())));
                 }
             }
             _ => { }

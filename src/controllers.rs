@@ -48,6 +48,69 @@ impl ConversationObserver for ConversationRecipient {
     fn recipient_was_changed(&self, address: comm::address::Address) {
         self.view.set_text(&address.to_str());
     }
+
+    fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) {
+    }
+}
+
+pub struct Message {
+    view: gtk::Label
+}
+
+impl Message {
+    pub fn new(message: Rc<RefCell<models::Message>>) -> Rc<RefCell<Message>> {
+        let view = gtk::Label::new(Some(message.borrow().text()));
+
+        let controller = Rc::new(RefCell::new(Message {
+            view: view
+        }));
+
+        controller
+    }
+
+    pub fn view(&self) -> &gtk::Label {
+        &self.view
+    }
+}
+
+pub struct Transcript {
+    view: gtk::ScrolledWindow,
+    container: gtk::Box
+}
+
+impl Transcript {
+    pub fn new(conversation: Rc<RefCell<models::Conversation>>) -> Rc<RefCell<Transcript>> {
+        let view = gtk::ScrolledWindow::new(None, None);
+        let viewport = gtk::Viewport::new(None, None);
+        let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        viewport.add(&container);
+        view.add(&viewport);
+
+        let controller = Rc::new(RefCell::new(Transcript {
+            view: view,
+            container: container
+        }));
+
+        conversation.borrow_mut().register_observer(controller.clone());
+
+        controller
+    }
+
+    pub fn view(&self) -> &gtk::ScrolledWindow {
+        &self.view
+    }
+}
+
+impl ConversationObserver for Transcript {
+    fn recipient_was_changed(&self, _: comm::address::Address) {
+    }
+
+    fn did_receive_message(&self, message: Rc<RefCell<models::Message>>) {
+        println!("Adding message to container");
+        let message_controller = Message::new(message);
+        self.container.pack_start(message_controller.borrow().view(), false, false, 0);
+        self.view().show_all();
+    }
 }
 
 pub struct Conversation {
@@ -58,7 +121,7 @@ impl Conversation {
     pub fn new(conversation: Rc<RefCell<models::Conversation>>) -> Rc<RefCell<Conversation>> {
         let view = gtk::Box::new(gtk::Orientation::Vertical, 0);
         let recipient_controller = ConversationRecipient::new(conversation.clone());
-        let transcript = gtk::Stack::new();
+        let transcript_controller = Transcript::new(conversation.clone());
         let send_button = gtk::Button::new_with_label("Send");
         let message = gtk::Entry::new();
         let send_pane = gtk::Paned::new(gtk::Orientation::Horizontal);
@@ -66,7 +129,7 @@ impl Conversation {
         send_pane.add1(&message);
         send_pane.add2(&send_button);
         view.pack_start(recipient_controller.borrow().view(), false, false, 0);
-        view.pack_start(&transcript, true, true, 0);
+        view.pack_start(transcript_controller.borrow().view(), true, true, 0);
         view.pack_start(&send_pane, false, false, 0);
 
         let controller = Rc::new(RefCell::new(Conversation {
@@ -77,7 +140,6 @@ impl Conversation {
         message.set_text(conversation.borrow().pending_message());
 
         // Connection UI events
-
         let c = conversation.clone();
         message.connect_preedit_changed(move |entry, _| {
             let text = entry.get_text().unwrap();
@@ -126,6 +188,9 @@ impl ConversationObserver for ConversationListItemTitle {
     fn recipient_was_changed(&self, address: comm::address::Address) {
         self.view.set_text(&address.to_str());
     }
+
+    fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) {
+    }
 }
 
 pub struct ConversationListItem {
@@ -134,6 +199,9 @@ pub struct ConversationListItem {
 
 impl ConversationObserver for ConversationListItem {
     fn recipient_was_changed(&self, _: comm::address::Address) {
+    }
+
+    fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) {
     }
 }
 

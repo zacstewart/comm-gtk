@@ -15,6 +15,25 @@ pub trait ConversationListObserver {
 
 pub trait ConversationObserver {
     fn recipient_was_changed(&self, Address);
+    fn did_receive_message(&self, Rc<RefCell<Message>>);
+}
+
+pub struct Message {
+    id: Address,
+    text: String
+}
+
+impl Message {
+    pub fn new(id: Address, text: String) -> Message {
+        Message {
+            id: id,
+            text: text
+        }
+    }
+
+    pub fn text(&self) -> &str{
+        &self.text
+    }
 }
 
 pub struct Conversation {
@@ -22,6 +41,7 @@ pub struct Conversation {
     recipient: Option<Address>,
     pending_message: String,
     client_commands: comm::client::TaskSender,
+    messages: Vec<Rc<RefCell<Message>>>,
     observers: Vec<Rc<RefCell<ConversationObserver>>>
 }
 
@@ -32,12 +52,20 @@ impl Conversation {
             recipient: None,
             pending_message: String::new(),
             client_commands: client_commands,
+            messages: vec![],
             observers: vec![]
         }
     }
 
     pub fn recipient(&self) -> Option<Address> {
         self.recipient
+    }
+
+    pub fn receive_message(&mut self, message: Rc<RefCell<Message>>) {
+        self.messages.push(message.clone());
+        for observer in self.observers.iter() {
+            observer.borrow().did_receive_message(message.clone());
+        }
     }
 
     pub fn pending_message(&self) -> &str {
@@ -111,14 +139,22 @@ impl ConversationList {
     pub fn handle_event(&mut self, event: comm::client::Event) {
         match event {
             comm::client::Event::ReceivedTextMessage(tm) => {
+                let sender = tm.sender;
+                let message = Rc::new(RefCell::new(Message::new(tm.id, tm.text)));
                 let existing_conversation = self.conversations.iter().any(|conversation| {
-                    conversation.borrow().recipient() == Some(tm.sender)
-                }).clone();
+                    conversation.borrow().recipient() == Some(sender)
+                });
+
                 if existing_conversation {
+                    let c = self.conversations.iter().find(|conversation| {
+                        conversation.borrow().recipient() == Some(sender)
+                    }).unwrap();
+                    c.borrow_mut().receive_message(message);
                 } else {
-                    c.set_recipient(tm.sender);
-                    self.prepend(Rc::new(RefCell::new(c)));
                     let c = Rc::new(RefCell::new(Conversation::new(self.self_address, self.client_commands.clone())));
+                    c.borrow_mut().set_recipient(sender);
+                    self.prepend(c.clone());
+                    c.borrow_mut().receive_message(message);
                 }
             }
             _ => { }

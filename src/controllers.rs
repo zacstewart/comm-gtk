@@ -316,9 +316,7 @@ pub struct Conversations {
 }
 
 impl Conversations {
-    pub fn new(model: Rc<RefCell<models::ConversationList>>,
-               self_address: comm::address::Address,
-               client_commands: comm::client::TaskSender) -> Rc<RefCell<Conversations>> {
+    pub fn new(connection: Rc<RefCell<models::Connection>>, conversation: Rc<RefCell<models::ConversationList>>) -> Rc<RefCell<Conversations>> {
         let controller = Rc::new(RefCell::new(Conversations {
             view: gtk::Paned::new(gtk::Orientation::Horizontal)
         }));
@@ -335,17 +333,16 @@ impl Conversations {
         search_add_pane.pack1(&search, true, true);
         search_add_pane.pack2(&new_contact_button, false, false);
 
-        let conversation_list_controller = ConversationList::new(model.clone());
+        let conversation_list_controller = ConversationList::new(conversation.clone());
 
         sidebar_pane.pack1(&search_add_pane, false, false);
         sidebar_pane.add2(conversation_list_controller.borrow().view());
         new_contact_button.connect_clicked(move |_| {
-            let conversation = Rc::new(RefCell::new(models::Conversation::new(
-                self_address, client_commands.clone())));
+            let conversation = Rc::new(RefCell::new(models::Conversation::new(connection.clone())));
             conversation_list_controller.borrow().add_conversation(conversation);
         });
 
-        model.borrow_mut().register_observer(controller.clone());
+        conversation.borrow_mut().register_observer(controller.clone());
 
         controller
     }

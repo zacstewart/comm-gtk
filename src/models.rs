@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::sync::mpsc;
 use std::rc::Rc;
 
 use comm::address::Address;
@@ -17,6 +18,50 @@ pub trait ConversationObserver {
     fn recipient_was_changed(&self, Address);
     fn pending_message_was_changed(&self, String);
     fn did_receive_message(&self, Rc<RefCell<Message>>);
+}
+
+pub struct Connection {
+    commands: comm::client::TaskSender,
+    events: mpsc::Receiver<comm::client::Event>,
+    self_address: comm::address::Address
+}
+
+impl Connection {
+    pub fn start(secret: &str, host: &str, router: Option<&String>) -> Connection {
+        let address = comm::address::Address::for_content(secret);
+
+        let routers: Vec<Box<comm::node::Node>> = match router {
+            Some(r) => {
+                let router_node = Box::new(comm::node::UdpNode::new(comm::address::Address::null(), r.as_str()));
+                vec![router_node]
+            }
+            None => vec![]
+        };
+
+        let network = comm::network::Network::new(address, host, routers);
+        let mut client = comm::client::Client::new(address);
+        let (event_sender, events) = mpsc::channel();
+        client.register_event_listener(event_sender);
+        let client_channel = client.run(network);
+
+        Connection {
+            commands: client_channel,
+            events: events,
+            self_address: address
+        }
+    }
+
+    pub fn commands(&self) -> &comm::client::TaskSender {
+        &self.commands
+    }
+
+    pub fn events(&self) -> &mpsc::Receiver<comm::client::Event> {
+        &self.events
+    }
+
+    pub fn self_address(&self) -> Address {
+        self.self_address
+    }
 }
 
 pub struct Message {
@@ -38,21 +83,19 @@ impl Message {
 }
 
 pub struct Conversation {
-    self_address: Address,
+    connection: Rc<RefCell<Connection>>,
     recipient: Option<Address>,
     pending_message: String,
-    client_commands: comm::client::TaskSender,
     messages: Vec<Rc<RefCell<Message>>>,
     observers: Vec<Rc<RefCell<ConversationObserver>>>
 }
 
 impl Conversation {
-    pub fn new(self_address: comm::address::Address, client_commands: comm::client::TaskSender) -> Conversation {
+    pub fn new(connection: Rc<RefCell<Connection>>) -> Conversation {
         Conversation {
-            self_address: self_address,
+            connection: connection,
             recipient: None,
             pending_message: String::new(),
-            client_commands: client_commands,
             messages: vec![],
             observers: vec![]
         }
@@ -93,8 +136,9 @@ impl Conversation {
 
     pub fn send_message(&mut self) {
         if let Some(recipient) = self.recipient {
-            let text_message = comm::client::messages::TextMessage::new(self.self_address, self.pending_message.clone());
-            self.client_commands
+            let text_message = comm::client::messages::TextMessage::new(
+                self.connection.borrow().self_address(), self.pending_message.clone());
+            self.connection.borrow().commands()
                 .send(comm::client::Task::ScheduleMessageDelivery(recipient, text_message))
                 .expect("Couldn't send message");
 
@@ -110,18 +154,16 @@ impl Observable<Rc<RefCell<ConversationObserver>>> for Conversation {
 }
 
 pub struct ConversationList {
-    self_address: Address,
+    connection: Rc<RefCell<Connection>>,
     conversations: Vec<Rc<RefCell<Conversation>>>,
-    client_commands: comm::client::TaskSender,
     observers: Vec<Rc<RefCell<ConversationListObserver>>>
 }
 
 impl ConversationList {
-    pub fn new(self_address: comm::address::Address, client_commands: comm::client::TaskSender) -> ConversationList {
+    pub fn new(connection: Rc<RefCell<Connection>>) -> ConversationList {
         ConversationList {
-            self_address: self_address,
+            connection: connection,
             conversations: vec![],
-            client_commands: client_commands,
             observers: vec![]
         }
     }
@@ -159,7 +201,7 @@ impl ConversationList {
                     }).unwrap();
                     c.borrow_mut().receive_message(message);
                 } else {
-                    let c = Rc::new(RefCell::new(Conversation::new(self.self_address, self.client_commands.clone())));
+                    let c = Rc::new(RefCell::new(Conversation::new(self.connection.clone())));
                     c.borrow_mut().set_recipient(sender);
                     self.prepend(c.clone());
                     c.borrow_mut().receive_message(message);

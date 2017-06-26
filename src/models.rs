@@ -18,6 +18,7 @@ pub trait ConversationObserver {
     fn recipient_was_changed(&self, Address);
     fn pending_message_was_changed(&self, String);
     fn did_receive_message(&self, Rc<RefCell<Message>>);
+    fn did_send_message(&self, Rc<RefCell<Message>>);
 }
 
 pub struct Connection {
@@ -105,13 +106,6 @@ impl Conversation {
         self.recipient
     }
 
-    pub fn receive_message(&mut self, message: Rc<RefCell<Message>>) {
-        self.messages.push(message.clone());
-        for observer in self.observers.iter() {
-            observer.borrow().did_receive_message(message.clone());
-        }
-    }
-
     pub fn messages(&self) -> &Vec<Rc<RefCell<Message>>> {
         &self.messages
     }
@@ -134,15 +128,28 @@ impl Conversation {
         }
     }
 
+    pub fn receive_message(&mut self, message: Rc<RefCell<Message>>) {
+        self.messages.push(message.clone());
+        for observer in self.observers.iter() {
+            observer.borrow().did_receive_message(message.clone());
+        }
+    }
+
     pub fn send_message(&mut self) {
         if let Some(recipient) = self.recipient {
-            let text_message = comm::client::messages::TextMessage::new(
+            let tm = comm::client::messages::TextMessage::new(
                 self.connection.borrow().self_address(), self.pending_message.clone());
+
             self.connection.borrow().commands()
-                .send(comm::client::Task::ScheduleMessageDelivery(recipient, text_message))
+                .send(comm::client::Task::ScheduleMessageDelivery(recipient, tm.clone()))
                 .expect("Couldn't send message");
 
             self.set_pending_message(String::new());
+
+            let message = Rc::new(RefCell::new(Message::new(tm.id, tm.text)));
+            for observer in self.observers.iter() {
+                observer.borrow().did_send_message(message.clone());
+            }
         }
     }
 }

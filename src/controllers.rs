@@ -54,6 +54,9 @@ impl ConversationObserver for ConversationRecipient {
 
     fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) {
     }
+
+    fn did_send_message(&self, _: Rc<RefCell<models::Message>>) {
+    }
 }
 
 pub struct Message {
@@ -112,7 +115,12 @@ impl ConversationObserver for Transcript {
     }
 
     fn did_receive_message(&self, message: Rc<RefCell<models::Message>>) {
-        println!("Adding message to container");
+        let message_controller = Message::new(message);
+        self.container.pack_start(message_controller.borrow().view(), false, false, 0);
+        self.view().show_all();
+    }
+
+    fn did_send_message(&self, message: Rc<RefCell<models::Message>>) {
         let message_controller = Message::new(message);
         self.container.pack_start(message_controller.borrow().view(), false, false, 0);
         self.view().show_all();
@@ -187,6 +195,9 @@ impl ConversationObserver for Conversation {
 
     fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) {
     }
+
+    fn did_send_message(&self, _: Rc<RefCell<models::Message>>) {
+    }
 }
 
 pub struct ConversationListItemTitle {
@@ -224,6 +235,9 @@ impl ConversationObserver for ConversationListItemTitle {
 
     fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) {
     }
+
+    fn did_send_message(&self, _: Rc<RefCell<models::Message>>) {
+    }
 }
 
 pub struct ConversationListItem {
@@ -238,6 +252,9 @@ impl ConversationObserver for ConversationListItem {
     }
 
     fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) {
+    }
+
+    fn did_send_message(&self, _: Rc<RefCell<models::Message>>) {
     }
 }
 

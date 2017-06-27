@@ -65,21 +65,44 @@ impl Connection {
     }
 }
 
+#[derive(PartialEq, Eq)]
+pub enum MessageDirection {
+    Sent, Received
+}
+
 pub struct Message {
     id: Address,
-    text: String
+    text: String,
+    direction: MessageDirection
 }
 
 impl Message {
-    pub fn new(id: Address, text: String) -> Message {
+    pub fn sent(id: Address, text: String) -> Message {
         Message {
             id: id,
-            text: text
+            text: text,
+            direction: MessageDirection::Sent
+        }
+    }
+
+    pub fn received(id: Address, text: String) -> Message {
+        Message {
+            id: id,
+            text: text,
+            direction: MessageDirection::Received
         }
     }
 
     pub fn text(&self) -> &str{
         &self.text
+    }
+
+    pub fn was_sent(&self) -> bool {
+        self.direction == MessageDirection::Sent
+    }
+
+    pub fn was_received(&self) -> bool {
+        self.direction == MessageDirection::Received
     }
 }
 
@@ -146,7 +169,8 @@ impl Conversation {
 
             self.set_pending_message(String::new());
 
-            let message = Rc::new(RefCell::new(Message::new(tm.id, tm.text)));
+            let message = Rc::new(RefCell::new(Message::sent(tm.id, tm.text)));
+            self.messages.push(message.clone());
             for observer in self.observers.iter() {
                 observer.borrow().did_send_message(message.clone());
             }
@@ -197,7 +221,7 @@ impl ConversationList {
         match event {
             comm::client::Event::ReceivedTextMessage(tm) => {
                 let sender = tm.sender;
-                let message = Rc::new(RefCell::new(Message::new(tm.id, tm.text)));
+                let message = Rc::new(RefCell::new(Message::received(tm.id, tm.text)));
                 let existing_conversation = self.conversations.iter().any(|conversation| {
                     conversation.borrow().recipient() == Some(sender)
                 });

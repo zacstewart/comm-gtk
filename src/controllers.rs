@@ -66,6 +66,11 @@ pub struct Message {
 impl Message {
     pub fn new(message: Rc<RefCell<models::Message>>) -> Rc<RefCell<Message>> {
         let view = gtk::Label::new(Some(message.borrow().text()));
+        if message.borrow().was_sent() {
+            view.set_halign(gtk::Align::End);
+        } else {
+            view.set_halign(gtk::Align::Start);
+        }
 
         let controller = Rc::new(RefCell::new(Message {
             view: view

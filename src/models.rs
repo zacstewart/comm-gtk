@@ -1,6 +1,6 @@
 use std::cell::RefCell;
-use std::sync::mpsc;
 use std::rc::Rc;
+use std::sync::mpsc;
 
 use comm::address::Address;
 use comm;
@@ -23,12 +23,11 @@ pub trait ConversationObserver {
 
 pub struct Connection {
     commands: comm::client::TaskSender,
-    events: mpsc::Receiver<comm::client::Event>,
     self_address: comm::address::Address
 }
 
 impl Connection {
-    pub fn start(secret: &str, host: &str, router: Option<&String>) -> Connection {
+    pub fn start(secret: &str, host: &str, router: Option<&String>) -> (Connection, comm::client::Events) {
         let address = comm::address::Address::for_content(secret);
 
         let routers: Vec<Box<comm::node::Node>> = match router {
@@ -45,19 +44,16 @@ impl Connection {
         client.register_event_listener(event_sender);
         let client_channel = client.run(network);
 
-        Connection {
+        let connection = Connection {
             commands: client_channel,
-            events: events,
             self_address: address
-        }
+        };
+
+        (connection, events)
     }
 
     pub fn commands(&self) -> &comm::client::TaskSender {
         &self.commands
-    }
-
-    pub fn events(&self) -> &mpsc::Receiver<comm::client::Event> {
-        &self.events
     }
 
     pub fn self_address(&self) -> Address {
@@ -107,7 +103,7 @@ impl Message {
 }
 
 pub struct Conversation {
-    connection: Rc<RefCell<Connection>>,
+    connection: Rc<Connection>,
     recipient: Option<Address>,
     pending_message: String,
     messages: Vec<Rc<RefCell<Message>>>,
@@ -115,7 +111,7 @@ pub struct Conversation {
 }
 
 impl Conversation {
-    pub fn new(connection: Rc<RefCell<Connection>>) -> Conversation {
+    pub fn new(connection: Rc<Connection>) -> Conversation {
         Conversation {
             connection: connection,
             recipient: None,
@@ -161,9 +157,9 @@ impl Conversation {
     pub fn send_message(&mut self) {
         if let Some(recipient) = self.recipient {
             let tm = comm::client::messages::TextMessage::new(
-                self.connection.borrow().self_address(), self.pending_message.clone());
+                self.connection.self_address(), self.pending_message.clone());
 
-            self.connection.borrow().commands()
+            self.connection.commands()
                 .send(comm::client::Task::ScheduleMessageDelivery(recipient, tm.clone()))
                 .expect("Couldn't send message");
 
@@ -185,13 +181,13 @@ impl Observable<Rc<RefCell<ConversationObserver>>> for Conversation {
 }
 
 pub struct ConversationList {
-    connection: Rc<RefCell<Connection>>,
+    connection: Rc<Connection>,
     conversations: Vec<Rc<RefCell<Conversation>>>,
     observers: Vec<Rc<RefCell<ConversationListObserver>>>
 }
 
 impl ConversationList {
-    pub fn new(connection: Rc<RefCell<Connection>>) -> ConversationList {
+    pub fn new(connection: Rc<Connection>) -> ConversationList {
         ConversationList {
             connection: connection,
             conversations: vec![],

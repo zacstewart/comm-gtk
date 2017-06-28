@@ -1,28 +1,31 @@
+extern crate glib;
 extern crate env_logger;
 extern crate comm;
 extern crate gtk;
 
 use gtk::prelude::*;
 use std::cell::RefCell;
-use std::rc::Rc;
 use std::env;
+use std::rc::Rc;
+use std::sync::mpsc;
+use std::thread;
 
 mod models;
 mod controllers;
 
-fn start_client() -> Rc<RefCell<models::Connection>> {
+fn start_client() -> (Rc<models::Connection>, comm::client::Events) {
     let args: Vec<String> = env::args().collect();
     let secret = args[1].as_str();
     let host = args[2].as_str();
     let router = args.get(3);
+    let (connection, events) = models::Connection::start(secret, host, router);
 
-
-    Rc::new(RefCell::new(models::Connection::start(secret, host, router)))
+    (Rc::new(connection), events)
 }
 
 fn main() {
     env_logger::init().unwrap();
-    let connection = start_client();
+    let (connection, events) = start_client();
 
     if gtk::init().is_err() {
         println!("Failed to initialize GTK.");
@@ -45,12 +48,32 @@ fn main() {
 
     main_window.show_all();
 
-    gtk::idle_add(move || {
-        if let Ok(event) = connection.borrow().events().try_recv() {
-            conversations.borrow_mut().handle_event(event);
+    let (tx, rx) = mpsc::channel();
+    GLOBAL.with(move |global| {
+        *global.borrow_mut() = Some((conversations, rx));
+    });
+
+    thread::spawn(move || {
+        for event in events.iter() {
+            tx.send(event);
+            glib::idle_add(handle_event);
         }
-        gtk::Continue(true)
     });
 
     gtk::main();
 }
+
+fn handle_event() -> glib::Continue {
+    GLOBAL.with(|global| {
+        if let Some((ref conversations, ref events)) = *global.borrow() {
+            if let Ok(event) = events.try_recv() {
+                conversations.borrow_mut().handle_event(event);
+            }
+        }
+    });
+    glib::Continue(false)
+}
+
+thread_local!(
+    pub static GLOBAL: RefCell<Option<(Rc<RefCell<models::ConversationList>>, comm::client::Events)>> = RefCell::new(None);
+);

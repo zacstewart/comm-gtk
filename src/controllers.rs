@@ -1,5 +1,5 @@
-use gtk;
 use gtk::prelude::*;
+use gtk;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -338,7 +338,7 @@ pub struct Conversations {
 }
 
 impl Conversations {
-    pub fn new(connection: Rc<RefCell<models::Connection>>, conversation: Rc<RefCell<models::ConversationList>>) -> Rc<RefCell<Conversations>> {
+    pub fn new(connection: Rc<models::Connection>, conversation: Rc<RefCell<models::ConversationList>>) -> Rc<RefCell<Conversations>> {
         let controller = Rc::new(RefCell::new(Conversations {
             view: gtk::Paned::new(gtk::Orientation::Horizontal)
         }));

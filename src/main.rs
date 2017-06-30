@@ -1,3 +1,5 @@
+#[macro_use]
+extern crate log;
 extern crate glib;
 extern crate env_logger;
 extern crate comm;

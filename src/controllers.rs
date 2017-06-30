@@ -326,26 +326,24 @@ impl ConversationListItem {
 }
 
 pub struct ConversationList {
-    model: Rc<RefCell<models::ConversationList>>,
     view: gtk::ListBox
 }
 
 impl ConversationList {
-    pub fn new(model: Rc<RefCell<models::ConversationList>>) -> Rc<RefCell<ConversationList>> {
+    pub fn new(conversations: Rc<RefCell<models::ConversationList>>) -> Rc<RefCell<ConversationList>> {
         let view = gtk::ListBox::new();
 
-        let cl = model.clone();
+        let cl = conversations.clone();
         view.connect_row_selected(move |_, list_item| {
             let index = list_item.as_ref().unwrap().get_index() as usize;
             cl.borrow().select_conversation(index);
         });
 
         let controller = Rc::new(RefCell::new(ConversationList {
-            model: model.clone(),
             view: view
         }));
 
-        model.borrow_mut().register_observer(controller.clone());
+        conversations.borrow_mut().register_observer(controller.clone());
 
         controller
     }

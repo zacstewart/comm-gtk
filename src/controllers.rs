@@ -347,10 +347,6 @@ impl ConversationList {
         controller
     }
 
-    pub fn add_conversation(&self, conversation: Rc<RefCell<models::Conversation>>) {
-        self.model.borrow_mut().prepend(conversation.clone());
-    }
-
     pub fn select_conversation(&self, index: usize) {
         self.model.borrow().select_conversation(index);
     }
@@ -397,9 +393,11 @@ impl Conversations {
 
         sidebar_pane.pack1(&search_add_pane, false, false);
         sidebar_pane.add2(conversation_list_controller.borrow().view());
+
+        let c = conversations.clone();
         new_contact_button.connect_clicked(move |_| {
             let conversation = Rc::new(RefCell::new(models::Conversation::new(connection.clone())));
-            conversation_list_controller.borrow().add_conversation(conversation);
+            c.borrow_mut().prepend(conversation);
         });
 
         conversations.borrow_mut().register_observer(controller.clone());

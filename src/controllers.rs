@@ -28,7 +28,7 @@ impl ConversationRecipient {
             None => controller.borrow().view().set_text("New Conversation")
         }
 
-        controller.borrow().view().connect_preedit_changed(move |entry, _| {
+        controller.borrow().view().connect_changed(move |entry| {
             let text = entry.get_text().unwrap();
             if text.len() == 40 {
                 let address = address::Address::from_str(&text);

@@ -19,6 +19,11 @@ impl ConversationRecipient {
     pub fn new(conversation: Rc<RefCell<models::Conversation>>) -> Rc<RefCell<ConversationRecipient>> {
         let view = gtk::Entry::new();
 
+        match conversation.borrow().recipient() {
+            Some(address) => view.set_text(&address.to_str()),
+            None => view.set_text("New Conversation")
+        }
+
         let c = conversation.clone();
         let changed_signal = view.connect_changed(move |entry| {
             let text = entry.get_text().unwrap();
@@ -34,11 +39,6 @@ impl ConversationRecipient {
         }));
 
         conversation.borrow_mut().register_observer(controller.clone());
-
-        match conversation.borrow().recipient() {
-            Some(address) => controller.borrow().view().set_text(&address.to_str()),
-            None => controller.borrow().view().set_text("New Conversation")
-        }
 
         controller
     }

@@ -231,7 +231,7 @@ impl ConversationObserver for Conversation {
     fn recipient_was_changed(&self, _: comm::address::Address) {
     }
 
-    fn pending_message_was_changed(&self, pending_message: String) {
+    fn pending_message_was_changed(&self, _: String) {
     }
 
     fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) {

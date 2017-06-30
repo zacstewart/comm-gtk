@@ -55,7 +55,7 @@ fn main() {
 
     thread::spawn(move || {
         for event in events.iter() {
-            tx.send(event);
+            tx.send(event).unwrap();
             glib::idle_add(handle_event);
         }
     });

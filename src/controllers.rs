@@ -1,3 +1,4 @@
+use glib::signal;
 use gtk::prelude::*;
 use gtk;
 use std::cell::RefCell;
@@ -10,15 +11,26 @@ use models;
 use models::{ConversationListObserver, ConversationObserver, Observable};
 
 pub struct ConversationRecipient {
-    view: gtk::Entry
+    view: gtk::Entry,
+    changed_signal: u64
 }
 
 impl ConversationRecipient {
     pub fn new(conversation: Rc<RefCell<models::Conversation>>) -> Rc<RefCell<ConversationRecipient>> {
         let view = gtk::Entry::new();
 
+        let c = conversation.clone();
+        let changed_signal = view.connect_changed(move |entry| {
+            let text = entry.get_text().unwrap();
+            if text.len() == 40 {
+                let address = address::Address::from_str(&text);
+                c.borrow_mut().set_recipient(address);
+            }
+        });
+
         let controller = Rc::new(RefCell::new(ConversationRecipient {
-            view: view
+            view: view,
+            changed_signal: changed_signal
         }));
 
         conversation.borrow_mut().register_observer(controller.clone());
@@ -27,14 +39,6 @@ impl ConversationRecipient {
             Some(address) => controller.borrow().view().set_text(&address.to_str()),
             None => controller.borrow().view().set_text("New Conversation")
         }
-
-        controller.borrow().view().connect_changed(move |entry| {
-            let text = entry.get_text().unwrap();
-            if text.len() == 40 {
-                let address = address::Address::from_str(&text);
-                conversation.borrow_mut().set_recipient(address);
-            }
-        });
 
         controller
     }
@@ -46,7 +50,9 @@ impl ConversationRecipient {
 
 impl ConversationObserver for ConversationRecipient {
     fn recipient_was_changed(&self, address: comm::address::Address) {
-        self.view.set_text(&address.to_str());
+        signal::signal_handler_block(&self.view, self.changed_signal);
+        self.view.get_buffer().set_text(&address.to_str());
+        signal::signal_handler_unblock(&self.view, self.changed_signal);
     }
 
     fn pending_message_was_changed(&self, _: String) {

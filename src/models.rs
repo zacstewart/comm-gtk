@@ -195,7 +195,7 @@ impl ConversationList {
         }
     }
 
-    pub fn prepend(&mut self, conversation: Rc<RefCell<Conversation>>) {
+    pub fn add_conversation(&mut self, conversation: Rc<RefCell<Conversation>>) {
         self.conversations.insert(0, conversation.clone());
         for observer in self.observers.iter() {
             observer.borrow().conversation_was_added(conversation.clone());
@@ -230,7 +230,7 @@ impl ConversationList {
                 } else {
                     let c = Rc::new(RefCell::new(Conversation::new(self.connection.clone())));
                     c.borrow_mut().set_recipient(sender);
-                    self.prepend(c.clone());
+                    self.add_conversation(c.clone());
                     c.borrow_mut().receive_message(message);
                 }
             }

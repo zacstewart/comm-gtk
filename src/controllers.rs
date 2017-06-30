@@ -394,7 +394,7 @@ impl Conversations {
         let c = conversations.clone();
         new_contact_button.connect_clicked(move |_| {
             let conversation = Rc::new(RefCell::new(models::Conversation::new(connection.clone())));
-            c.borrow_mut().prepend(conversation);
+            c.borrow_mut().add_conversation(conversation);
         });
 
         let controller = Rc::new(RefCell::new(Conversations {

@@ -376,7 +376,7 @@ pub struct Conversations {
 }
 
 impl Conversations {
-    pub fn new(connection: Rc<models::Connection>, conversation: Rc<RefCell<models::ConversationList>>) -> Rc<RefCell<Conversations>> {
+    pub fn new(connection: Rc<models::Connection>, conversations: Rc<RefCell<models::ConversationList>>) -> Rc<RefCell<Conversations>> {
         let controller = Rc::new(RefCell::new(Conversations {
             view: gtk::Paned::new(gtk::Orientation::Horizontal)
         }));
@@ -393,7 +393,7 @@ impl Conversations {
         search_add_pane.pack1(&search, true, true);
         search_add_pane.pack2(&new_contact_button, false, false);
 
-        let conversation_list_controller = ConversationList::new(conversation.clone());
+        let conversation_list_controller = ConversationList::new(conversations.clone());
 
         sidebar_pane.pack1(&search_add_pane, false, false);
         sidebar_pane.add2(conversation_list_controller.borrow().view());
@@ -402,7 +402,7 @@ impl Conversations {
             conversation_list_controller.borrow().add_conversation(conversation);
         });
 
-        conversation.borrow_mut().register_observer(controller.clone());
+        conversations.borrow_mut().register_observer(controller.clone());
 
         controller
     }

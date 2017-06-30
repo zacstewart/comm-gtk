@@ -147,6 +147,8 @@ impl MessageEntry {
     pub fn new(conversation: Rc<RefCell<models::Conversation>>) -> Rc<RefCell<MessageEntry>> {
         let view = gtk::Entry::new();
 
+        view.set_text(conversation.borrow().pending_message());
+
         let c = conversation.clone();
         let changed_signal = view.connect_preedit_changed(move |entry, _| {
             let text = entry.get_text().unwrap();
@@ -158,7 +160,6 @@ impl MessageEntry {
             changed_signal: changed_signal
         }));
 
-        controller.borrow().view().set_text(conversation.borrow().pending_message());
 
         controller
     }

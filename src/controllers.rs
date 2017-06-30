@@ -138,9 +138,53 @@ impl ConversationObserver for Transcript {
     }
 }
 
+pub struct MessageEntry {
+    view: gtk::Entry,
+    changed_signal: u64
+}
+
+impl MessageEntry {
+    pub fn new(conversation: Rc<RefCell<models::Conversation>>) -> Rc<RefCell<MessageEntry>> {
+        let view = gtk::Entry::new();
+
+        let c = conversation.clone();
+        let changed_signal = view.connect_preedit_changed(move |entry, _| {
+            let text = entry.get_text().unwrap();
+            c.borrow_mut().set_pending_message(text);
+        });
+
+        let controller = Rc::new(RefCell::new(MessageEntry {
+            view: view,
+            changed_signal: changed_signal
+        }));
+
+        controller.borrow().view().set_text(conversation.borrow().pending_message());
+
+        controller
+    }
+
+    pub fn view(&self) -> &gtk::Entry {
+        &self.view
+    }
+}
+
+impl ConversationObserver for MessageEntry {
+    fn recipient_was_changed(&self, _: comm::address::Address) {
+    }
+
+    fn pending_message_was_changed(&self, pending_message: String) {
+        self.view.set_text(&pending_message)
+    }
+
+    fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) {
+    }
+
+    fn did_send_message(&self, _: Rc<RefCell<models::Message>>) {
+    }
+}
+
 pub struct Conversation {
-    view: gtk::Box,
-    pending_message: gtk::Entry
+    view: gtk::Box
 }
 
 impl Conversation {
@@ -148,11 +192,12 @@ impl Conversation {
         let view = gtk::Box::new(gtk::Orientation::Vertical, 0);
         let recipient_controller = ConversationRecipient::new(conversation.clone());
         let transcript_controller = Transcript::new(conversation.clone());
+        let message_entry = MessageEntry::new(conversation.clone());
+
         let send_button = gtk::Button::new_with_label("Send");
-        let pending_message = gtk::Entry::new();
         let send_pane = gtk::Paned::new(gtk::Orientation::Horizontal);
         send_pane.set_position(300);
-        send_pane.add1(&pending_message);
+        send_pane.add1(message_entry.borrow().view());
         send_pane.add2(&send_button);
         view.pack_start(recipient_controller.borrow().view(), false, false, 0);
         view.pack_start(transcript_controller.borrow().view(), true, true, 0);
@@ -163,19 +208,8 @@ impl Conversation {
         }
 
         let controller = Rc::new(RefCell::new(Conversation {
-            view: view,
-            pending_message: pending_message
+            view: view
         }));
-
-        // Initialize UI widgets
-        controller.borrow().pending_message().set_text(conversation.borrow().pending_message());
-
-        // Connection UI events
-        let c = conversation.clone();
-        controller.borrow().pending_message().connect_preedit_changed(move |entry, _| {
-            let text = entry.get_text().unwrap();
-            c.borrow_mut().set_pending_message(text);
-        });
 
         let c = conversation.clone();
         send_button.connect_clicked(move |_| {
@@ -185,10 +219,6 @@ impl Conversation {
         conversation.borrow_mut().register_observer(controller.clone());
 
         controller
-    }
-
-    pub fn pending_message(&self) -> &gtk::Entry {
-        &self.pending_message
     }
 
     pub fn view(&self) -> &gtk::Box {
@@ -201,7 +231,6 @@ impl ConversationObserver for Conversation {
     }
 
     fn pending_message_was_changed(&self, pending_message: String) {
-        self.pending_message.set_text(&pending_message)
     }
 
     fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) {

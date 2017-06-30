@@ -150,7 +150,7 @@ impl MessageEntry {
         view.set_text(conversation.borrow().pending_message());
 
         let c = conversation.clone();
-        let changed_signal = view.connect_preedit_changed(move |entry, _| {
+        let changed_signal = view.connect_changed(move |entry| {
             let text = entry.get_text().unwrap();
             c.borrow_mut().set_pending_message(text);
         });
@@ -174,7 +174,9 @@ impl ConversationObserver for MessageEntry {
     }
 
     fn pending_message_was_changed(&self, pending_message: String) {
-        self.view.set_text(&pending_message)
+        signal::signal_handler_block(&self.view, self.changed_signal);
+        self.view.set_text(&pending_message);
+        signal::signal_handler_unblock(&self.view, self.changed_signal);
     }
 
     fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) {

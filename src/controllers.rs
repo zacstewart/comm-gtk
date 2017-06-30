@@ -210,14 +210,14 @@ impl Conversation {
         view.pack_start(transcript_controller.borrow().view(), true, true, 0);
         view.pack_start(&send_pane, false, false, 0);
 
-        let controller = Rc::new(RefCell::new(Conversation {
-            view: view
-        }));
-
         let c = conversation.clone();
         send_button.connect_clicked(move |_| {
             c.borrow_mut().send_message();
         });
+
+        let controller = Rc::new(RefCell::new(Conversation {
+            view: view
+        }));
 
         conversation.borrow_mut().register_observer(controller.clone());
 

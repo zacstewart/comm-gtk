@@ -108,6 +108,10 @@ impl Transcript {
             container: container
         }));
 
+        for message in conversation.borrow().messages().iter().cloned() {
+            controller.borrow_mut().did_receive_message(message);
+        }
+
         conversation.borrow_mut().register_observer(controller.clone());
 
         controller
@@ -205,10 +209,6 @@ impl Conversation {
         view.pack_start(recipient_controller.borrow().view(), false, false, 0);
         view.pack_start(transcript_controller.borrow().view(), true, true, 0);
         view.pack_start(&send_pane, false, false, 0);
-
-        for message in conversation.borrow().messages().iter().cloned() {
-            transcript_controller.borrow_mut().did_receive_message(message);
-        }
 
         let controller = Rc::new(RefCell::new(Conversation {
             view: view

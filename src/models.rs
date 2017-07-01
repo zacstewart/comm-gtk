@@ -6,7 +6,7 @@ use std::sync::mpsc;
 use comm::address::Address;
 use comm;
 
-struct ObserverSet<O> {
+pub struct ObserverSet<O> {
     next_id: usize,
     observers: HashMap<usize, O>
 }

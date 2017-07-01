@@ -2,7 +2,6 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::mpsc;
-use std::collections::hash_map;
 
 use comm::address::Address;
 use comm;

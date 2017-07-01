@@ -1,12 +1,53 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::mpsc;
+use std::collections::hash_map;
 
 use comm::address::Address;
 use comm;
 
+struct ObserverSet<O> {
+    next_id: usize,
+    observers: HashMap<usize, O>
+}
+
+impl<O> ObserverSet<O> {
+    fn new() -> ObserverSet<O> {
+        ObserverSet {
+            next_id: 0,
+            observers: HashMap::new()
+        }
+    }
+
+    fn insert(&mut self, observer: O) -> usize {
+        let id = self.next_id;
+        self.next_id += 1;
+        self.observers.insert(id, observer);
+        id
+    }
+
+    fn notify<F: Fn(&O)>(&self, function: F) {
+        for (_, observer) in self.observers.iter() {
+            function(observer);
+        }
+    }
+
+    fn remove(&mut self, id: &usize) {
+        self.observers.remove(id);
+    }
+}
+
 pub trait Observable<O> {
-    fn register_observer(&mut self, observer: O);
+    fn observers(&mut self) -> &mut ObserverSet<O>;
+
+    fn register_observer(&mut self, observer: O) -> usize {
+        self.observers().insert(observer)
+    }
+
+    fn deregister_observer(&mut self, id: &usize) {
+        self.observers().remove(id);
+    }
 }
 
 pub trait ConversationListObserver {
@@ -107,7 +148,7 @@ pub struct Conversation {
     recipient: Option<Address>,
     pending_message: String,
     messages: Vec<Rc<RefCell<Message>>>,
-    observers: Vec<Rc<RefCell<ConversationObserver>>>
+    observers: ObserverSet<Rc<RefCell<ConversationObserver>>>
 }
 
 impl Conversation {
@@ -117,7 +158,7 @@ impl Conversation {
             recipient: None,
             pending_message: String::new(),
             messages: vec![],
-            observers: vec![]
+            observers: ObserverSet::new()
         }
     }
 
@@ -135,23 +176,23 @@ impl Conversation {
 
     pub fn set_pending_message(&mut self, text: String) {
         self.pending_message = text.clone();
-        for observer in self.observers.iter() {
+        self.observers.notify(|observer| {
             observer.borrow().pending_message_was_changed(text.clone());
-        }
+        });
     }
 
     pub fn set_recipient(&mut self, recipient: Address) {
         self.recipient = Some(recipient);
-        for observer in self.observers.iter() {
+        self.observers.notify(|observer| {
             observer.borrow().recipient_was_changed(recipient);
-        }
+        });
     }
 
     pub fn receive_message(&mut self, message: Rc<RefCell<Message>>) {
         self.messages.push(message.clone());
-        for observer in self.observers.iter() {
+        self.observers.notify(|observer| {
             observer.borrow().did_receive_message(message.clone());
-        }
+        })
     }
 
     pub fn send_message(&mut self) {
@@ -167,23 +208,23 @@ impl Conversation {
 
             let message = Rc::new(RefCell::new(Message::sent(tm.id, tm.text)));
             self.messages.push(message.clone());
-            for observer in self.observers.iter() {
+            self.observers.notify(|observer| {
                 observer.borrow().did_send_message(message.clone());
-            }
+            });
         }
     }
 }
 
 impl Observable<Rc<RefCell<ConversationObserver>>> for Conversation {
-    fn register_observer(&mut self, observer: Rc<RefCell<ConversationObserver>>) {
-        self.observers.push(observer);
+    fn observers(&mut self) -> &mut ObserverSet<Rc<RefCell<ConversationObserver>>> {
+        &mut self.observers
     }
 }
 
 pub struct ConversationList {
     connection: Rc<Connection>,
     conversations: Vec<Rc<RefCell<Conversation>>>,
-    observers: Vec<Rc<RefCell<ConversationListObserver>>>
+    observers: ObserverSet<Rc<RefCell<ConversationListObserver>>>
 }
 
 impl ConversationList {
@@ -191,15 +232,15 @@ impl ConversationList {
         ConversationList {
             connection: connection,
             conversations: vec![],
-            observers: vec![]
+            observers: ObserverSet::new()
         }
     }
 
     pub fn add_conversation(&mut self, conversation: Rc<RefCell<Conversation>>) {
         self.conversations.insert(0, conversation.clone());
-        for observer in self.observers.iter() {
+        self.observers.notify(|observer| {
             observer.borrow().conversation_was_added(conversation.clone());
-        }
+        });
     }
 
     pub fn get(&self, index: usize) -> Option<&Rc<RefCell<Conversation>>> {
@@ -208,9 +249,9 @@ impl ConversationList {
 
     pub fn select_conversation(&self, index: usize) {
         let conversation = self.get(index).unwrap();
-        for observer in self.observers.iter() {
+        self.observers.notify(|observer| {
             observer.borrow().conversation_was_selected(conversation.clone());
-        }
+        });
     }
 
     pub fn handle_event(&mut self, event: comm::client::Event) {
@@ -240,7 +281,7 @@ impl ConversationList {
 }
 
 impl Observable<Rc<RefCell<ConversationListObserver>>> for ConversationList {
-    fn register_observer(&mut self, observer: Rc<RefCell<ConversationListObserver>>) {
-        self.observers.push(observer);
+    fn observers(&mut self) -> &mut ObserverSet<Rc<RefCell<ConversationListObserver>>> {
+        &mut self.observers
     }
 }

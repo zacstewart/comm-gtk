@@ -38,7 +38,10 @@ impl ConversationRecipient {
             changed_signal: changed_signal
         }));
 
-        conversation.borrow_mut().register_observer(controller.clone());
+        let observer_id = conversation.borrow_mut().register_observer(controller.clone());
+        controller.borrow().view().connect_destroy(move |_| {
+            conversation.borrow_mut().deregister_observer(&observer_id);
+        });
 
         controller
     }
@@ -107,7 +110,10 @@ impl Transcript {
             controller.borrow_mut().did_receive_message(message);
         }
 
-        conversation.borrow_mut().register_observer(controller.clone());
+        let observer_id = conversation.borrow_mut().register_observer(controller.clone());
+        controller.borrow().view().connect_destroy(move |_| {
+            conversation.borrow_mut().deregister_observer(&observer_id);
+        });
 
         controller
     }
@@ -166,10 +172,14 @@ impl MessageEntry {
 
         let controller = Rc::new(RefCell::new(MessageEntry {
             view: view,
-            changed_signal: changed_signal
+            changed_signal: changed_signal,
+            key_press_signal: key_press_signal
         }));
 
-        conversation.borrow_mut().register_observer(controller.clone());
+        let observer_id = conversation.borrow_mut().register_observer(controller.clone());
+        controller.borrow().view().connect_destroy(move |_| {
+            conversation.borrow_mut().deregister_observer(&observer_id);
+        });
 
         controller
     }
@@ -211,7 +221,10 @@ impl Conversation {
             view: view
         }));
 
-        conversation.borrow_mut().register_observer(controller.clone());
+        let observer_id = conversation.borrow_mut().register_observer(controller.clone());
+        controller.borrow().view().connect_destroy(move |_| {
+            conversation.borrow_mut().deregister_observer(&observer_id);
+        });
 
         controller
     }
@@ -288,7 +301,10 @@ impl ConversationListItem {
             view: view
         }));
 
-        conversation.borrow_mut().register_observer(controller.clone());
+        let observer_id = conversation.borrow_mut().register_observer(controller.clone());
+        controller.borrow().view().connect_destroy(move |_| {
+            conversation.borrow_mut().deregister_observer(&observer_id);
+        });
 
         controller
     }
@@ -316,7 +332,10 @@ impl ConversationList {
             view: view
         }));
 
-        conversations.borrow_mut().register_observer(controller.clone());
+        let observer_id = conversations.borrow_mut().register_observer(controller.clone());
+        controller.borrow().view().connect_destroy(move |_| {
+            conversations.borrow_mut().deregister_observer(&observer_id);
+        });
 
         controller
     }
@@ -372,7 +391,10 @@ impl Conversations {
             view: view
         }));
 
-        conversations.borrow_mut().register_observer(controller.clone());
+        let observer_id = conversations.borrow_mut().register_observer(controller.clone());
+        controller.borrow().view().connect_destroy(move |_| {
+            conversations.borrow_mut().deregister_observer(&observer_id);
+        });
 
         controller
     }

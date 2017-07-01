@@ -172,8 +172,7 @@ impl MessageEntry {
 
         let controller = Rc::new(RefCell::new(MessageEntry {
             view: view,
-            changed_signal: changed_signal,
-            key_press_signal: key_press_signal
+            changed_signal: changed_signal
         }));
 
         let observer_id = conversation.borrow_mut().register_observer(controller.clone());

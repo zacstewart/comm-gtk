@@ -151,11 +151,25 @@ impl MessageEntry {
             c.borrow_mut().set_pending_message(text);
         });
 
+        let c = conversation.clone();
+        view.connect_key_press_event(move |_, event| {
+            match event.get_keyval() {
+                65293 => {
+                    c.borrow_mut().send_message();
+                    gtk::Inhibit(true)
+                }
+                _ => {
+                    gtk::Inhibit(false)
+                }
+            }
+        });
+
         let controller = Rc::new(RefCell::new(MessageEntry {
             view: view,
             changed_signal: changed_signal
         }));
 
+        conversation.borrow_mut().register_observer(controller.clone());
 
         controller
     }
@@ -189,19 +203,9 @@ impl Conversation {
         let transcript_controller = Transcript::new(conversation.clone());
         let message_entry = MessageEntry::new(conversation.clone());
 
-        let send_button = gtk::Button::new_with_label("Send");
-        let send_pane = gtk::Paned::new(gtk::Orientation::Horizontal);
-        send_pane.set_position(300);
-        send_pane.add1(message_entry.borrow().view());
-        send_pane.add2(&send_button);
         view.pack_start(recipient_controller.borrow().view(), false, false, 0);
         view.pack_start(transcript_controller.borrow().view(), true, true, 0);
-        view.pack_start(&send_pane, false, false, 0);
-
-        let c = conversation.clone();
-        send_button.connect_clicked(move |_| {
-            c.borrow_mut().send_message();
-        });
+        view.pack_start(message_entry.borrow().view(), false, false, 0);
 
         let controller = Rc::new(RefCell::new(Conversation {
             view: view

@@ -55,14 +55,9 @@ impl ConversationObserver for ConversationRecipient {
         signal::signal_handler_unblock(&self.view, self.changed_signal);
     }
 
-    fn pending_message_was_changed(&self, _: String) {
-    }
-
-    fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) {
-    }
-
-    fn did_send_message(&self, _: Rc<RefCell<models::Message>>) {
-    }
+    fn pending_message_was_changed(&self, _: String) { }
+    fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) { }
+    fn did_send_message(&self, _: Rc<RefCell<models::Message>>) { }
 }
 
 pub struct Message {
@@ -123,11 +118,8 @@ impl Transcript {
 }
 
 impl ConversationObserver for Transcript {
-    fn recipient_was_changed(&self, _: comm::address::Address) {
-    }
-
-    fn pending_message_was_changed(&self, _: String) {
-    }
+    fn recipient_was_changed(&self, _: comm::address::Address) { }
+    fn pending_message_was_changed(&self, _: String) { }
 
     fn did_receive_message(&self, message: Rc<RefCell<models::Message>>) {
         let message_controller = Message::new(message);
@@ -174,8 +166,7 @@ impl MessageEntry {
 }
 
 impl ConversationObserver for MessageEntry {
-    fn recipient_was_changed(&self, _: comm::address::Address) {
-    }
+    fn recipient_was_changed(&self, _: comm::address::Address) { }
 
     fn pending_message_was_changed(&self, pending_message: String) {
         signal::signal_handler_block(&self.view, self.changed_signal);
@@ -183,11 +174,8 @@ impl ConversationObserver for MessageEntry {
         signal::signal_handler_unblock(&self.view, self.changed_signal);
     }
 
-    fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) {
-    }
-
-    fn did_send_message(&self, _: Rc<RefCell<models::Message>>) {
-    }
+    fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) { }
+    fn did_send_message(&self, _: Rc<RefCell<models::Message>>) { }
 }
 
 pub struct Conversation {
@@ -230,17 +218,10 @@ impl Conversation {
 }
 
 impl ConversationObserver for Conversation {
-    fn recipient_was_changed(&self, _: comm::address::Address) {
-    }
-
-    fn pending_message_was_changed(&self, _: String) {
-    }
-
-    fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) {
-    }
-
-    fn did_send_message(&self, _: Rc<RefCell<models::Message>>) {
-    }
+    fn recipient_was_changed(&self, _: comm::address::Address) { }
+    fn pending_message_was_changed(&self, _: String) { }
+    fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) { }
+    fn did_send_message(&self, _: Rc<RefCell<models::Message>>) { }
 }
 
 pub struct ConversationListItemTitle {
@@ -274,14 +255,9 @@ impl ConversationObserver for ConversationListItemTitle {
         self.view.set_text(&address.to_str());
     }
 
-    fn pending_message_was_changed(&self, _: String) {
-    }
-
-    fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) {
-    }
-
-    fn did_send_message(&self, _: Rc<RefCell<models::Message>>) {
-    }
+    fn pending_message_was_changed(&self, _: String) { }
+    fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) { }
+    fn did_send_message(&self, _: Rc<RefCell<models::Message>>) { }
 }
 
 pub struct ConversationListItem {
@@ -289,17 +265,10 @@ pub struct ConversationListItem {
 }
 
 impl ConversationObserver for ConversationListItem {
-    fn recipient_was_changed(&self, _: comm::address::Address) {
-    }
-
-    fn pending_message_was_changed(&self, _: String) {
-    }
-
-    fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) {
-    }
-
-    fn did_send_message(&self, _: Rc<RefCell<models::Message>>) {
-    }
+    fn recipient_was_changed(&self, _: comm::address::Address) { }
+    fn pending_message_was_changed(&self, _: String) { }
+    fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) { }
+    fn did_send_message(&self, _: Rc<RefCell<models::Message>>) { }
 }
 
 impl ConversationListItem {
@@ -360,8 +329,7 @@ impl ConversationListObserver for ConversationList {
         list_item.borrow().view().show_all();
     }
 
-    fn conversation_was_selected(&self, _: Rc<RefCell<models::Conversation>>) {
-    }
+    fn conversation_was_selected(&self, _: Rc<RefCell<models::Conversation>>) { }
 }
 
 pub struct Conversations {
@@ -411,8 +379,7 @@ impl Conversations {
 }
 
 impl ConversationListObserver for Conversations {
-    fn conversation_was_added(&self, _: Rc<RefCell<models::Conversation>>) {
-    }
+    fn conversation_was_added(&self, _: Rc<RefCell<models::Conversation>>) { }
 
     fn conversation_was_selected(&self, conversation: Rc<RefCell<models::Conversation>>) {
         let conversation_controller = Conversation::new(conversation);

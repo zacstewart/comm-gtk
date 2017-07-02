@@ -28,7 +28,7 @@ impl ConversationRecipient {
         let changed_signal = view.connect_changed(move |entry| {
             let text = entry.get_text().unwrap();
             if text.len() == 40 {
-                let address = address::Address::from_str(&text);
+                let address = address::Address::from_str(&text).ok();
                 c.borrow_mut().set_recipient(address);
             }
         });
@@ -52,9 +52,12 @@ impl ConversationRecipient {
 }
 
 impl ConversationObserver for ConversationRecipient {
-    fn recipient_was_changed(&self, address: comm::address::Address) {
+    fn recipient_was_changed(&self, address: Option<comm::address::Address>) {
         signal::signal_handler_block(&self.view, self.changed_signal);
-        self.view.get_buffer().set_text(&address.to_str());
+        match address {
+            Some(a) => self.view.set_text(&a.to_str()),
+            None => self.view.set_text("New Conversation")
+        }
         signal::signal_handler_unblock(&self.view, self.changed_signal);
     }
 
@@ -124,7 +127,7 @@ impl Transcript {
 }
 
 impl ConversationObserver for Transcript {
-    fn recipient_was_changed(&self, _: comm::address::Address) { }
+    fn recipient_was_changed(&self, _: Option<comm::address::Address>) { }
     fn pending_message_was_changed(&self, _: String) { }
 
     fn did_receive_message(&self, message: Rc<RefCell<models::Message>>) {
@@ -189,7 +192,7 @@ impl MessageEntry {
 }
 
 impl ConversationObserver for MessageEntry {
-    fn recipient_was_changed(&self, _: comm::address::Address) { }
+    fn recipient_was_changed(&self, _: Option<comm::address::Address>) { }
 
     fn pending_message_was_changed(&self, pending_message: String) {
         signal::signal_handler_block(&self.view, self.changed_signal);
@@ -234,7 +237,7 @@ impl Conversation {
 }
 
 impl ConversationObserver for Conversation {
-    fn recipient_was_changed(&self, _: comm::address::Address) { }
+    fn recipient_was_changed(&self, _: Option<comm::address::Address>) { }
     fn pending_message_was_changed(&self, _: String) { }
     fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) { }
     fn did_send_message(&self, _: Rc<RefCell<models::Message>>) { }
@@ -267,8 +270,11 @@ impl ConversationListItemTitle {
     }
 }
 impl ConversationObserver for ConversationListItemTitle {
-    fn recipient_was_changed(&self, address: comm::address::Address) {
-        self.view.set_text(&address.to_str());
+    fn recipient_was_changed(&self, address: Option<comm::address::Address>) {
+        match address {
+            Some(a) => self.view.set_text(&a.to_str()),
+            None => self.view.set_text("New Conversation")
+        }
     }
 
     fn pending_message_was_changed(&self, _: String) { }
@@ -281,7 +287,7 @@ pub struct ConversationListItem {
 }
 
 impl ConversationObserver for ConversationListItem {
-    fn recipient_was_changed(&self, _: comm::address::Address) { }
+    fn recipient_was_changed(&self, _: Option<comm::address::Address>) { }
     fn pending_message_was_changed(&self, _: String) { }
     fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) { }
     fn did_send_message(&self, _: Rc<RefCell<models::Message>>) { }

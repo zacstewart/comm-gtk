@@ -55,7 +55,7 @@ pub trait ConversationListObserver {
 }
 
 pub trait ConversationObserver {
-    fn recipient_was_changed(&self, Address);
+    fn recipient_was_changed(&self, Option<Address>);
     fn pending_message_was_changed(&self, String);
     fn did_receive_message(&self, Rc<RefCell<Message>>);
     fn did_send_message(&self, Rc<RefCell<Message>>);
@@ -180,8 +180,8 @@ impl Conversation {
         });
     }
 
-    pub fn set_recipient(&mut self, recipient: Address) {
-        self.recipient = Some(recipient);
+    pub fn set_recipient(&mut self, recipient: Option<Address>) {
+        self.recipient = recipient;
         self.observers.notify(|observer| {
             observer.borrow().recipient_was_changed(recipient);
         });
@@ -269,7 +269,7 @@ impl ConversationList {
                     c.borrow_mut().receive_message(message);
                 } else {
                     let c = Rc::new(RefCell::new(Conversation::new(self.connection.clone())));
-                    c.borrow_mut().set_recipient(sender);
+                    c.borrow_mut().set_recipient(Some(sender));
                     self.add_conversation(c.clone());
                     c.borrow_mut().receive_message(message);
                 }

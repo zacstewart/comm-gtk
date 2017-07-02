@@ -93,7 +93,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "comm"
 version = "0.1.0"
-source = "git+https://github.com/zacstewart/comm.git#af80e8d037ecc31f580491fd6068b26663c89cc3"
+source = "git+https://github.com/zacstewart/comm.git#bee51c0d0bea1e1c63176e22c91296980af6ef7a"
 dependencies = [
  "env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",

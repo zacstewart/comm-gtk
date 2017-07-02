@@ -8,7 +8,7 @@ use comm;
 use comm::address;
 
 use models;
-use models::{ConversationListObserver, ConversationObserver, Observable};
+use models::{ConversationListObserver, ConversationObserver, MessageObserver, Observable};
 
 pub struct ConversationRecipient {
     view: gtk::Entry,
@@ -83,11 +83,18 @@ impl Message {
             view: view
         }));
 
+        message.borrow_mut().register_observer(controller.clone());
+
         controller
     }
 
     pub fn view(&self) -> &gtk::Label {
         &self.view
+    }
+}
+
+impl MessageObserver for Message {
+    fn did_receieve_acknowledgement(&self) {
     }
 }
 

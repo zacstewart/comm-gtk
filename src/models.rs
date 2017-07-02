@@ -61,6 +61,10 @@ pub trait ConversationObserver {
     fn did_send_message(&self, Rc<RefCell<Message>>);
 }
 
+pub trait MessageObserver {
+    fn did_receieve_acknowledgement(&self);
+}
+
 pub struct Connection {
     commands: comm::client::TaskSender,
     self_address: comm::address::Address
@@ -109,24 +113,32 @@ pub enum MessageDirection {
 pub struct Message {
     id: Address,
     text: String,
-    direction: MessageDirection
+    direction: MessageDirection,
+    acknowledged: bool,
+    observers: ObserverSet<Rc<RefCell<MessageObserver>>>
 }
 
 impl Message {
-    pub fn sent(id: Address, text: String) -> Message {
+    pub fn new(id: Address, text: String, direction: MessageDirection) -> Message {
         Message {
             id: id,
             text: text,
-            direction: MessageDirection::Sent
+            direction: direction,
+            acknowledged: false,
+            observers: ObserverSet::new()
         }
+
+    }
+    pub fn sent(id: Address, text: String) -> Message {
+        Self::new(id, text, MessageDirection::Sent)
     }
 
     pub fn received(id: Address, text: String) -> Message {
-        Message {
-            id: id,
-            text: text,
-            direction: MessageDirection::Received
-        }
+        Self::new(id, text, MessageDirection::Received)
+    }
+
+    pub fn acknowledged(&self) -> bool {
+        self.acknowledged
     }
 
     pub fn text(&self) -> &str{
@@ -139,6 +151,19 @@ impl Message {
 
     pub fn was_received(&self) -> bool {
         self.direction == MessageDirection::Received
+    }
+
+    fn receive_acknowledgement(&mut self) {
+        self.acknowledged = true;
+        self.observers.notify(|observer| {
+            observer.borrow().did_receieve_acknowledgement();
+        });
+    }
+}
+
+impl Observable<Rc<RefCell<MessageObserver>>> for Message {
+    fn observers(&mut self) -> &mut ObserverSet<Rc<RefCell<MessageObserver>>> {
+        &mut self.observers
     }
 }
 
@@ -207,6 +232,7 @@ impl Conversation {
 
             let message = Rc::new(RefCell::new(Message::sent(tm.id, tm.text)));
             self.messages.push(message.clone());
+
             self.observers.notify(|observer| {
                 observer.borrow().did_send_message(message.clone());
             });
@@ -272,6 +298,15 @@ impl ConversationList {
                     c.borrow_mut().set_recipient(Some(sender));
                     self.add_conversation(c.clone());
                     c.borrow_mut().receive_message(message);
+                }
+            }
+            comm::client::Event::ReceivedMessageAcknowledgement(ack) => {
+                for conversation in self.conversations.iter() {
+                    for message in conversation.borrow().messages.iter() {
+                        if message.borrow().id == ack.message_id {
+                            message.borrow_mut().receive_acknowledgement();
+                        }
+                    }
                 }
             }
             _ => { }

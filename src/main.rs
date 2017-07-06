@@ -38,7 +38,7 @@ fn main() {
 
     let main_window = gtk::Window::new(gtk::WindowType::Toplevel);
     main_window.set_title("Comm Messenger");
-    main_window.set_default_size(600, 350);
+    main_window.set_default_size(700, 400);
     main_window.set_position(gtk::WindowPosition::Center);
     main_window.connect_delete_event(|_, _| {
         gtk::main_quit();

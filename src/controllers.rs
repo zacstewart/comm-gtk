@@ -375,7 +375,7 @@ impl Conversations {
     pub fn new(connection: Rc<models::Connection>, conversations: Rc<RefCell<models::ConversationList>>) -> Rc<RefCell<Conversations>> {
         let view = gtk::Paned::new(gtk::Orientation::Horizontal);
 
-        view.set_position(200);
+        view.set_position(300);
 
         let sidebar_pane = gtk::Paned::new(gtk::Orientation::Vertical);
         view.add1(&sidebar_pane);

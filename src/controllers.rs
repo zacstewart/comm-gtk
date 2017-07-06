@@ -67,16 +67,25 @@ impl ConversationObserver for ConversationRecipient {
 }
 
 pub struct Message {
-    view: gtk::Label
+    view: gtk::Box
 }
 
 impl Message {
     pub fn new(message: Rc<RefCell<models::Message>>) -> Rc<RefCell<Message>> {
-        let view = gtk::Label::new(Some(message.borrow().text()));
+        let text = gtk::Label::new(Some(message.borrow().text()));
+        text.set_line_wrap(true);
+        let view = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        let style = view.get_style_context().unwrap();
+
+        style.add_class("message");
+
+        view.pack_start(&text, false, false, 0);
         if message.borrow().was_sent() {
             view.set_halign(gtk::Align::End);
+            style.add_class("message--sent");
         } else {
             view.set_halign(gtk::Align::Start);
+            style.add_class("message--received");
         }
 
         let controller = Rc::new(RefCell::new(Message {
@@ -88,7 +97,7 @@ impl Message {
         controller
     }
 
-    pub fn view(&self) -> &gtk::Label {
+    pub fn view(&self) -> &gtk::Box {
         &self.view
     }
 }
@@ -108,6 +117,11 @@ impl Transcript {
         let view = gtk::ScrolledWindow::new(None, None);
         let viewport = gtk::Viewport::new(None, None);
         let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
+
+        let style = container.get_style_context().unwrap();
+
+        style.add_class("transcript");
+
         viewport.add(&container);
         view.add(&viewport);
 

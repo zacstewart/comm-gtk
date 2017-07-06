@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate log;
+extern crate gdk;
 extern crate glib;
 extern crate env_logger;
 extern crate comm;
@@ -60,6 +61,25 @@ fn main() {
             tx.send(event).unwrap();
             glib::idle_add(handle_event);
         }
+    });
+
+
+    let css_provider = gtk::CssProvider::new();
+    let display = gdk::Display::get_default().expect("Couldn't open default GDK display");
+    let screen = display.get_default_screen();
+    gtk::StyleContext::add_provider_for_screen(&screen,
+                                               &css_provider,
+                                               gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
+    css_provider.load_from_path("resources/style.css").expect("Failed to load stylesheet");
+
+    main_window.connect_key_press_event(move |_, event| {
+        if event.get_keyval() == 65474 { // F5
+            match css_provider.load_from_path("resources/style.css") {
+                Ok(_) => { },
+                Err(_) => println!("Failed to load CSS")
+            }
+        }
+        gtk::Inhibit(false)
     });
 
     gtk::main();

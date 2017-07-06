@@ -74,9 +74,9 @@ impl Connection {
     pub fn start(secret: &str, host: &str, router: Option<&String>) -> (Connection, comm::client::Events) {
         let address = comm::address::Address::for_content(secret);
 
-        let routers: Vec<Box<comm::node::Node>> = match router {
+        let routers: Vec<comm::node::Node> = match router {
             Some(r) => {
-                let router_node = Box::new(comm::node::UdpNode::new(comm::address::Address::null(), r.as_str()));
+                let router_node = comm::node::Node::new(comm::address::Address::null(), r.as_str());
                 vec![router_node]
             }
             None => vec![]

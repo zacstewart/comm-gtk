@@ -65,6 +65,30 @@ pub trait MessageObserver {
     fn did_receieve_acknowledgement(&self);
 }
 
+#[derive(Debug)]
+pub struct Configuration {
+    secret: Option<String>,
+    router: Option<String>,
+    port: Option<u16>
+}
+
+impl Configuration {
+    pub fn empty() -> Configuration {
+        Configuration {
+            secret: None,
+            router: None,
+            port: None
+        }
+    }
+
+    pub fn update(&mut self, secret: Option<String>, router: Option<String>, port: Option<u16>) {
+        self.secret = secret;
+        self.router = router;
+        self.port = port;
+        println!("{:?}", self);
+    }
+}
+
 pub struct Connection {
     commands: comm::client::TaskSender,
     self_address: comm::address::Address

@@ -3,12 +3,83 @@ use gtk::prelude::*;
 use gtk;
 use std::cell::RefCell;
 use std::rc::Rc;
-
+use std::str::FromStr;
 use comm;
 use comm::address;
 
 use models;
 use models::{ConversationListObserver, ConversationObserver, MessageObserver, Observable};
+
+pub struct Configuration {
+    view: gtk::Window
+}
+
+impl Configuration {
+    pub fn new(configuration: Rc<RefCell<models::Configuration>>) -> Rc<RefCell<Configuration>> {
+        let view = gtk::Window::new(gtk::WindowType::Toplevel);
+        view.set_title("Configuration");
+        view.set_position(gtk::WindowPosition::Center);
+        let grid = gtk::Grid::new();
+
+        let secret_label = gtk::Label::new("Your secret");
+        secret_label.set_halign(gtk::Align::Start);
+        let secret_entry = gtk::Entry::new();
+        grid.attach(&secret_label, 0, 0, 100, 12);
+        grid.attach_next_to(&secret_entry,
+                            Some(&secret_label),
+                            gtk::PositionType::Right,
+                            100, 12);
+
+        let bootstrap_label = gtk::Label::new("Bootstrap node");
+        bootstrap_label.set_halign(gtk::Align::Start);
+        let bootstrap_entry = gtk::Entry::new();
+        grid.attach_next_to(&bootstrap_label,
+                            Some(&secret_label),
+                            gtk::PositionType::Bottom,
+                            100, 12);
+        grid.attach_next_to(&bootstrap_entry,
+                            Some(&bootstrap_label),
+                            gtk::PositionType::Right,
+                            100, 12);
+
+        let port_label = gtk::Label::new("Local Port");
+        port_label.set_halign(gtk::Align::Start);
+        let port_entry = gtk::Entry::new();
+        grid.attach_next_to(&port_label,
+                            Some(&bootstrap_label),
+                            gtk::PositionType::Bottom,
+                            100, 12);
+        grid.attach_next_to(&port_entry,
+                            Some(&port_label),
+                            gtk::PositionType::Right,
+                            100, 12);
+
+        let connect_button = gtk::Button::new_with_label("Connect");
+
+        let container = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        container.pack_start(&grid, false, false, 0);
+        container.pack_start(&connect_button, false, false, 0);
+
+        let c = configuration.clone();
+        connect_button.connect_clicked(move |_| {
+            c.borrow_mut().update(
+                secret_entry.get_text(),
+                bootstrap_entry.get_text(),
+                port_entry.get_text().and_then(|port| u16::from_str(port.as_str()).ok())
+            );
+        });
+
+        view.add(&container);
+
+        Rc::new(RefCell::new(Configuration {
+            view: view
+        }))
+    }
+
+    pub fn view(&self) -> &gtk::Window {
+        &self.view
+    }
+}
 
 pub struct ConversationRecipient {
     view: gtk::Entry,

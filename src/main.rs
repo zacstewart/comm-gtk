@@ -28,14 +28,11 @@ fn start_client() -> (Rc<models::Connection>, comm::client::Events) {
 
 fn main() {
     env_logger::init().unwrap();
-    let (connection, events) = start_client();
 
     if gtk::init().is_err() {
         println!("Failed to initialize GTK.");
         return;
     }
-
-    let conversations = Rc::new(RefCell::new(models::ConversationList::new(connection.clone())));
 
     let main_window = gtk::Window::new(gtk::WindowType::Toplevel);
     main_window.set_title("Comm Messenger");
@@ -46,9 +43,14 @@ fn main() {
         Inhibit(false)
     });
 
+    let configuration = Rc::new(RefCell::new(models::Configuration::empty()));
+    let configuration_controller = controllers::Configuration::new(configuration);
+    configuration_controller.borrow().view().show_all();
+
+    let (connection, events) = start_client();
+    let conversations = Rc::new(RefCell::new(models::ConversationList::new(connection.clone())));
     let conversations_controller = controllers::Conversations::new(connection.clone(), conversations.clone());
     main_window.add(conversations_controller.borrow().view());
-
     main_window.show_all();
 
     let (tx, rx) = mpsc::channel();
@@ -62,7 +64,6 @@ fn main() {
             glib::idle_add(handle_event);
         }
     });
-
 
     let css_provider = gtk::CssProvider::new();
     let display = gdk::Display::get_default().expect("Couldn't open default GDK display");

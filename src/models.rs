@@ -65,11 +65,11 @@ pub trait MessageObserver {
     fn did_receieve_acknowledgement(&self);
 }
 
-#[derive(Debug)]
 pub struct Configuration {
     secret: Option<String>,
     router: Option<String>,
-    port: Option<u16>
+    port: Option<u16>,
+    observers: Vec<Rc<RefCell<Connection>>>
 }
 
 impl Configuration {
@@ -77,7 +77,8 @@ impl Configuration {
         Configuration {
             secret: None,
             router: None,
-            port: None
+            port: None,
+            observers: vec![]
         }
     }
 
@@ -85,20 +86,69 @@ impl Configuration {
         self.secret = secret;
         self.router = router;
         self.port = port;
-        println!("{:?}", self);
+        for observer in self.observers.iter() {
+            observer.borrow_mut().configuration_was_updated(&self);
+        }
+    }
+
+    pub fn register_observer(&mut self, observer: Rc<RefCell<Connection>>) {
+        self.observers.push(observer);
+    }
+
+    fn secret(&self) -> &Option<String> {
+        &self.secret
+    }
+
+    fn router(&self) -> &Option<String> {
+        &self.router
+    }
+
+    fn port(&self) -> &Option<u16> {
+        &self.port
     }
 }
 
 pub struct Connection {
-    commands: comm::client::TaskSender,
-    self_address: comm::address::Address
+    event_sender: mpsc::Sender<comm::client::Event>,
+    commands: Option<comm::client::TaskSender>,
+    self_address: Option<comm::address::Address>
 }
 
 impl Connection {
-    pub fn start(secret: &str, host: &str, router: Option<&String>) -> (Connection, comm::client::Events) {
-        let address = comm::address::Address::for_content(secret);
+    pub fn new(configuration: Rc<RefCell<Configuration>>) -> (Rc<RefCell<Connection>>, comm::client::Events) {
 
-        let routers: Vec<comm::node::Node> = match router {
+        let (event_sender, events) = mpsc::channel();
+
+        let connection = Rc::new(RefCell::new(Connection {
+            event_sender: event_sender,
+            commands: None,
+            self_address: None
+        }));
+
+        configuration.borrow_mut().register_observer(connection.clone());
+
+        (connection, events)
+    }
+
+    pub fn commands(&self) -> comm::client::TaskSender {
+        self.commands.as_ref().unwrap().clone()
+    }
+
+    pub fn self_address(&self) -> Address {
+        self.self_address.unwrap()
+    }
+
+    pub fn configuration_was_updated(&mut self, configuration: &Configuration) {
+        if let Some(c) = self.commands.as_ref() {
+            c.send(comm::client::Task::Shutdown).expect("Failed to send Shutdown");
+            return;
+        }
+
+        self.self_address = configuration.secret().as_ref().map(|ref s| comm::address::Address::for_content(s.as_str()));
+
+        let host = ("0.0.0.0", configuration.port().unwrap());
+
+        let routers: Vec<comm::node::Node> = match configuration.router().as_ref() {
             Some(r) => {
                 let router_node = comm::node::Node::new(comm::address::Address::null(), r.as_str());
                 vec![router_node]
@@ -106,26 +156,15 @@ impl Connection {
             None => vec![]
         };
 
-        let network = comm::network::Network::new(address, host, routers);
-        let mut client = comm::client::Client::new(address);
-        let (event_sender, events) = mpsc::channel();
-        client.register_event_listener(event_sender);
-        let client_channel = client.run(network);
-
-        let connection = Connection {
-            commands: client_channel,
-            self_address: address
-        };
-
-        (connection, events)
+        let network = comm::network::Network::new(self.self_address.unwrap(), host, routers);
+        let mut client = comm::client::Client::new(self.self_address.unwrap());
+        client.register_event_listener(self.event_sender.clone());
+        self.commands = Some(client.run(network));
     }
 
-    pub fn commands(&self) -> &comm::client::TaskSender {
-        &self.commands
-    }
-
-    pub fn self_address(&self) -> Address {
-        self.self_address
+    pub fn shutdown(&mut self) {
+        self.commands = None;
+        self.self_address = None;
     }
 }
 
@@ -192,7 +231,7 @@ impl Observable<Rc<RefCell<MessageObserver>>> for Message {
 }
 
 pub struct Conversation {
-    connection: Rc<Connection>,
+    connection: Rc<RefCell<Connection>>,
     recipient: Option<Address>,
     pending_message: String,
     messages: Vec<Rc<RefCell<Message>>>,
@@ -200,7 +239,7 @@ pub struct Conversation {
 }
 
 impl Conversation {
-    pub fn new(connection: Rc<Connection>) -> Conversation {
+    pub fn new(connection: Rc<RefCell<Connection>>) -> Conversation {
         Conversation {
             connection: connection,
             recipient: None,
@@ -246,9 +285,9 @@ impl Conversation {
     pub fn send_message(&mut self) {
         if let Some(recipient) = self.recipient {
             let tm = comm::client::messages::TextMessage::new(
-                self.connection.self_address(), self.pending_message.clone());
+                self.connection.borrow().self_address(), self.pending_message.clone());
 
-            self.connection.commands()
+            self.connection.borrow().commands()
                 .send(comm::client::Task::ScheduleMessageDelivery(recipient, tm.clone()))
                 .expect("Couldn't send message");
 
@@ -271,13 +310,13 @@ impl Observable<Rc<RefCell<ConversationObserver>>> for Conversation {
 }
 
 pub struct ConversationList {
-    connection: Rc<Connection>,
+    connection: Rc<RefCell<Connection>>,
     conversations: Vec<Rc<RefCell<Conversation>>>,
     observers: ObserverSet<Rc<RefCell<ConversationListObserver>>>
 }
 
 impl ConversationList {
-    pub fn new(connection: Rc<Connection>) -> ConversationList {
+    pub fn new(connection: Rc<RefCell<Connection>>) -> ConversationList {
         ConversationList {
             connection: connection,
             conversations: vec![],
@@ -324,6 +363,7 @@ impl ConversationList {
                     c.borrow_mut().receive_message(message);
                 }
             }
+
             comm::client::Event::ReceivedMessageAcknowledgement(ack) => {
                 for conversation in self.conversations.iter() {
                     for message in conversation.borrow().messages.iter() {
@@ -332,6 +372,10 @@ impl ConversationList {
                         }
                     }
                 }
+            }
+
+            comm::client::Event::Shutdown => {
+                self.connection.borrow_mut().shutdown();
             }
             _ => { }
         }

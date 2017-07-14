@@ -8,23 +8,12 @@ extern crate gtk;
 
 use gtk::prelude::*;
 use std::cell::RefCell;
-use std::env;
 use std::rc::Rc;
 use std::sync::mpsc;
 use std::thread;
 
 mod models;
 mod controllers;
-
-fn start_client() -> (Rc<models::Connection>, comm::client::Events) {
-    let args: Vec<String> = env::args().collect();
-    let secret = args[1].as_str();
-    let host = args[2].as_str();
-    let router = args.get(3);
-    let (connection, events) = models::Connection::start(secret, host, router);
-
-    (Rc::new(connection), events)
-}
 
 fn main() {
     env_logger::init().unwrap();
@@ -44,10 +33,10 @@ fn main() {
     });
 
     let configuration = Rc::new(RefCell::new(models::Configuration::empty()));
-    let configuration_controller = controllers::Configuration::new(configuration);
+    let configuration_controller = controllers::Configuration::new(configuration.clone());
     configuration_controller.borrow().view().show_all();
 
-    let (connection, events) = start_client();
+    let (connection, events) = models::Connection::new(configuration);
     let conversations = Rc::new(RefCell::new(models::ConversationList::new(connection.clone())));
     let conversations_controller = controllers::Conversations::new(connection.clone(), conversations.clone());
     main_window.add(conversations_controller.borrow().view());

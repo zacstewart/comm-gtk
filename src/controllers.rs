@@ -457,7 +457,7 @@ pub struct Conversations {
 }
 
 impl Conversations {
-    pub fn new(connection: Rc<models::Connection>, conversations: Rc<RefCell<models::ConversationList>>) -> Rc<RefCell<Conversations>> {
+    pub fn new(connection: Rc<RefCell<models::Connection>>, conversations: Rc<RefCell<models::ConversationList>>) -> Rc<RefCell<Conversations>> {
         let view = gtk::Paned::new(gtk::Orientation::Horizontal);
 
         view.set_position(300);

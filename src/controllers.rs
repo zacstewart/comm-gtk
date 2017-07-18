@@ -507,10 +507,10 @@ impl Conversations {
         let search_add_pane = gtk::Paned::new(gtk::Orientation::Horizontal);
 
         let search = gtk::SearchEntry::new();
-        let new_contact_button = gtk::Button::new_from_icon_name("contact-new", 2);
+        let new_conversation_button = gtk::Button::new_from_icon_name("contact-new", 2);
 
         search_add_pane.pack1(&search, true, true);
-        search_add_pane.pack2(&new_contact_button, false, false);
+        search_add_pane.pack2(&new_conversation_button, false, false);
 
         let conversation_list_controller = ConversationList::new(conversations.clone());
 
@@ -518,7 +518,7 @@ impl Conversations {
         sidebar_pane.add2(conversation_list_controller.borrow().view());
 
         let c = conversations.clone();
-        new_contact_button.connect_clicked(move |_| {
+        new_conversation_button.connect_clicked(move |_| {
             let conversation = Rc::new(RefCell::new(models::Conversation::new(connection.clone())));
             c.borrow_mut().add_conversation(conversation);
             c.borrow_mut().select_conversation(0);

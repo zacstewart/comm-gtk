@@ -3,18 +3,26 @@
     padding: 10px;
 }
 
-.message {
+.message .message__text {
     border-radius: 12px;
     margin-bottom: 1px;
     padding: 10px;
 }
 
-.message.message--received {
+.message .message__status {
+    color: rgb(131, 131, 136);
+    font-size: small;
+}
+
+.message:last-child .message__status {
+}
+
+.message.message--received .message__text {
     background-color: rgb(225, 225, 231);
     color: #000;
 }
 
-.message.message--sent {
+.message.message--sent .message__text {
     background-color: rgb(14, 120, 247);
     color: #fff;
 }

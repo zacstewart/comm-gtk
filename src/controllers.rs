@@ -137,20 +137,47 @@ impl ConversationObserver for ConversationRecipient {
     fn did_send_message(&self, _: Rc<RefCell<models::Message>>) { }
 }
 
+pub struct MessageStatus {
+    view: gtk::Label
+}
+
+impl MessageStatus {
+    pub fn new(message: Rc<RefCell<models::Message>>) -> Rc<RefCell<MessageStatus>> {
+        let view = gtk::Label::new(None);
+        view.set_halign(gtk::Align::End);
+        let style = view.get_style_context().unwrap();
+        style.add_class("message__status");
+
+        let controller = Rc::new(RefCell::new(MessageStatus {
+            view: view
+        }));
+
+        message.borrow_mut().register_observer(controller.clone());
+
+        controller
+    }
+
+    pub fn view(&self) -> &gtk::Label {
+        &self.view
+    }
+}
+
+impl MessageObserver for MessageStatus {
+    fn did_receieve_acknowledgement(&self) {
+        self.view().set_text("Acknowledged");
+    }
+}
+
 pub struct Message {
     view: gtk::Box
 }
 
 impl Message {
     pub fn new(message: Rc<RefCell<models::Message>>) -> Rc<RefCell<Message>> {
-        let text = gtk::Label::new(Some(message.borrow().text()));
-        text.set_line_wrap(true);
         let view = gtk::Box::new(gtk::Orientation::Vertical, 0);
         let style = view.get_style_context().unwrap();
 
         style.add_class("message");
-
-        view.pack_start(&text, false, false, 0);
         if message.borrow().was_sent() {
             view.set_halign(gtk::Align::End);
             style.add_class("message--sent");
@@ -158,6 +185,17 @@ impl Message {
             view.set_halign(gtk::Align::Start);
             style.add_class("message--received");
         }
+
+        let text = gtk::Label::new(Some(message.borrow().text()));
+        text.set_line_wrap(true);
+        let text_style = text.get_style_context().unwrap();
+        text_style.add_class("message__text");
+        text.set_halign(gtk::Align::Start);
+
+        let status = MessageStatus::new(message.clone());
+
+        view.pack_start(&text, false, false, 0);
+        view.pack_start(status.borrow().view(), false, false, 0);
 
         let controller = Rc::new(RefCell::new(Message {
             view: view
@@ -175,6 +213,8 @@ impl Message {
 
 impl MessageObserver for Message {
     fn did_receieve_acknowledgement(&self) {
+        let style = self.view().get_style_context().unwrap();
+        style.add_class("message--acknowledged");
     }
 }
 

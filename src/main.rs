@@ -66,7 +66,7 @@ fn main() {
         if event.get_keyval() == 65474 { // F5
             match css_provider.load_from_path("resources/style.css") {
                 Ok(_) => { },
-                Err(_) => println!("Failed to load CSS")
+                Err(err) => println!("Failed to load stylesheet: {}", err)
             }
         }
         gtk::Inhibit(false)

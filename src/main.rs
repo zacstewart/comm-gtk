@@ -34,13 +34,14 @@ fn main() {
 
     let configuration = Rc::new(RefCell::new(models::Configuration::empty()));
     let configuration_controller = controllers::Configuration::new(configuration.clone());
-    configuration_controller.borrow().view().show_all();
 
     let (connection, events) = models::Connection::new(configuration);
     let conversations = Rc::new(RefCell::new(models::ConversationList::new(connection.clone())));
     let conversations_controller = controllers::Conversations::new(connection.clone(), conversations.clone());
     main_window.add(conversations_controller.borrow().view());
+
     main_window.show_all();
+    configuration_controller.borrow().view().show_all();
 
     let (tx, rx) = mpsc::channel();
     GLOBAL.with(move |global| {

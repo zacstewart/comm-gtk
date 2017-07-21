@@ -69,6 +69,10 @@ impl Configuration {
             );
         });
 
+        view.connect_delete_event(|_,_| {
+            gtk::Inhibit(true)
+        });
+
         view.add(&container);
 
         Rc::new(RefCell::new(Configuration {

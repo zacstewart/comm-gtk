@@ -29,7 +29,7 @@ fn main() {
     main_window.set_position(gtk::WindowPosition::Center);
     main_window.connect_delete_event(|_, _| {
         gtk::main_quit();
-        Inhibit(false)
+        gtk::Inhibit(true)
     });
 
     let configuration = Rc::new(RefCell::new(models::Configuration::empty()));

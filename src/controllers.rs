@@ -1,3 +1,4 @@
+use glib;
 use glib::signal;
 use gtk::prelude::*;
 use gtk;
@@ -260,6 +261,15 @@ impl Transcript {
     pub fn view(&self) -> &gtk::ScrolledWindow {
         &self.view
     }
+
+    fn scroll_to_bottom(&self) {
+        let adj = self.view().get_vadjustment().unwrap();
+        gtk::idle_add(move || {
+            let new_value = adj.get_upper() - adj.get_page_size();
+            adj.set_value(new_value);
+            glib::Continue(false)
+        });
+    }
 }
 
 impl ConversationObserver for Transcript {
@@ -270,12 +280,14 @@ impl ConversationObserver for Transcript {
         let message_controller = Message::new(message);
         self.container.pack_start(message_controller.borrow().view(), false, false, 0);
         self.view().show_all();
+        self.scroll_to_bottom();
     }
 
     fn did_send_message(&self, message: Rc<RefCell<models::Message>>) {
         let message_controller = Message::new(message);
         self.container.pack_start(message_controller.borrow().view(), false, false, 0);
         self.view().show_all();
+        self.scroll_to_bottom();
     }
 }
 

@@ -1,4 +1,3 @@
-use glib;
 use glib::signal;
 use gtk::prelude::*;
 use gtk;
@@ -267,7 +266,7 @@ impl Transcript {
         gtk::idle_add(move || {
             let new_value = adj.get_upper() - adj.get_page_size();
             adj.set_value(new_value);
-            glib::Continue(false)
+            gtk::Continue(false)
         });
     }
 }

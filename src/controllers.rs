@@ -184,6 +184,10 @@ impl MessageStatus {
             view: view
         }));
 
+        if message.borrow().acknowledged() {
+            controller.borrow().did_receieve_acknowledgement();
+        }
+
         message.borrow_mut().register_observer(controller.clone());
 
         controller
@@ -232,6 +236,10 @@ impl Message {
         let controller = Rc::new(RefCell::new(Message {
             view: view
         }));
+
+        if message.borrow().acknowledged() {
+            controller.borrow().did_receieve_acknowledgement();
+        }
 
         message.borrow_mut().register_observer(controller.clone());
 

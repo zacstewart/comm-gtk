@@ -249,10 +249,6 @@ impl Conversation {
         }
     }
 
-    pub fn recipient(&self) -> Option<Address> {
-        self.recipient
-    }
-
     pub fn messages(&self) -> &Vec<Rc<RefCell<Message>>> {
         &self.messages
     }
@@ -280,6 +276,10 @@ impl Conversation {
         self.observers.notify(|observer| {
             observer.borrow_mut().did_receive_message(message.clone());
         })
+    }
+
+    pub fn recipient(&self) -> Option<Address> {
+        self.recipient
     }
 
     pub fn send_message(&mut self) {

@@ -26,8 +26,8 @@ impl<O> ObserverSet<O> {
         id
     }
 
-    fn notify<F: Fn(&O)>(&self, function: F) {
-        for (_, observer) in self.observers.iter() {
+    fn notify<F: Fn(&O)>(&mut self, function: F) {
+        for (_, observer) in self.observers.iter_mut() {
             function(observer);
         }
     }
@@ -57,8 +57,8 @@ pub trait ConversationListObserver {
 pub trait ConversationObserver {
     fn recipient_was_changed(&self, Option<Address>);
     fn pending_message_was_changed(&self, String);
-    fn did_receive_message(&self, Rc<RefCell<Message>>);
-    fn did_send_message(&self, Rc<RefCell<Message>>);
+    fn did_receive_message(&mut self, Rc<RefCell<Message>>);
+    fn did_send_message(&mut self, Rc<RefCell<Message>>);
 }
 
 pub trait MessageObserver {
@@ -278,7 +278,7 @@ impl Conversation {
     pub fn receive_message(&mut self, message: Rc<RefCell<Message>>) {
         self.messages.push(message.clone());
         self.observers.notify(|observer| {
-            observer.borrow().did_receive_message(message.clone());
+            observer.borrow_mut().did_receive_message(message.clone());
         })
     }
 
@@ -297,7 +297,7 @@ impl Conversation {
             self.messages.push(message.clone());
 
             self.observers.notify(|observer| {
-                observer.borrow().did_send_message(message.clone());
+                observer.borrow_mut().did_send_message(message.clone());
             });
         }
     }
@@ -335,8 +335,8 @@ impl ConversationList {
         self.conversations.get(index)
     }
 
-    pub fn select_conversation(&self, index: usize) {
-        let conversation = self.get(index).unwrap();
+    pub fn select_conversation(&mut self, index: usize) {
+        let conversation = self.get(index).unwrap().clone();
         self.observers.notify(|observer| {
             observer.borrow().conversation_was_selected(conversation.clone());
         });

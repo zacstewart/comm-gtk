@@ -86,21 +86,27 @@ impl Configuration {
 }
 
 pub struct ConversationRecipient {
-    view: gtk::Entry,
-    changed_signal: u64
+    view: gtk::Box,
+    entry: gtk::Entry,
+    label: gtk::Label,
+    conversation_has_started: bool
 }
 
 impl ConversationRecipient {
     pub fn new(conversation: Rc<RefCell<models::Conversation>>) -> Rc<RefCell<ConversationRecipient>> {
-        let view = gtk::Entry::new();
+        let view = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        let entry = gtk::Entry::new();
+        let label = gtk::Label::new(None);
+        let style = label.get_style_context().unwrap();
+        style.add_class("conversation_recipient__label");
 
         match conversation.borrow().recipient() {
-            Some(address) => view.set_text(&address.to_str()),
-            None => view.set_text("New Conversation")
+            Some(address) => entry.set_text(&address.to_str()),
+            None => entry.set_text("New Conversation")
         }
 
         let c = conversation.clone();
-        let changed_signal = view.connect_changed(move |entry| {
+        entry.connect_changed(move |entry| {
             let text = entry.get_text().unwrap();
             if text.len() == 40 {
                 let address = address::Address::from_str(&text).ok();
@@ -108,9 +114,13 @@ impl ConversationRecipient {
             }
         });
 
+        view.add(&entry);
+
         let controller = Rc::new(RefCell::new(ConversationRecipient {
             view: view,
-            changed_signal: changed_signal
+            entry: entry,
+            label: label,
+            conversation_has_started: false
         }));
 
         let observer_id = conversation.borrow_mut().register_observer(controller.clone());
@@ -121,24 +131,42 @@ impl ConversationRecipient {
         controller
     }
 
-    pub fn view(&self) -> &gtk::Entry {
+    fn disable_recipient_editing(&mut self) {
+        if !self.conversation_has_started {
+            self.view.remove(&self.entry);
+            self.view.add(&self.label);
+            self.view.show_all();
+            self.conversation_has_started = true;
+        }
+    }
+
+    pub fn view(&self) -> &gtk::Box {
         &self.view
     }
 }
 
 impl ConversationObserver for ConversationRecipient {
     fn recipient_was_changed(&self, address: Option<comm::address::Address>) {
-        signal::signal_handler_block(&self.view, self.changed_signal);
         match address {
-            Some(a) => self.view.set_text(&a.to_str()),
-            None => self.view.set_text("New Conversation")
+            Some(a) => {
+                self.entry.set_text(&a.to_str());
+                self.label.set_markup(&a.to_str());
+            }
+            None => {
+                self.entry.set_text("New Conversation")
+            }
         }
-        signal::signal_handler_unblock(&self.view, self.changed_signal);
     }
 
     fn pending_message_was_changed(&self, _: String) { }
-    fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) { }
-    fn did_send_message(&self, _: Rc<RefCell<models::Message>>) { }
+
+    fn did_receive_message(&mut self, _: Rc<RefCell<models::Message>>) {
+        self.disable_recipient_editing();
+    }
+
+    fn did_send_message(&mut self, _: Rc<RefCell<models::Message>>) {
+        self.disable_recipient_editing();
+    }
 }
 
 pub struct MessageStatus {
@@ -275,14 +303,14 @@ impl ConversationObserver for Transcript {
     fn recipient_was_changed(&self, _: Option<comm::address::Address>) { }
     fn pending_message_was_changed(&self, _: String) { }
 
-    fn did_receive_message(&self, message: Rc<RefCell<models::Message>>) {
+    fn did_receive_message(&mut self, message: Rc<RefCell<models::Message>>) {
         let message_controller = Message::new(message);
         self.container.pack_start(message_controller.borrow().view(), false, false, 0);
         self.view().show_all();
         self.scroll_to_bottom();
     }
 
-    fn did_send_message(&self, message: Rc<RefCell<models::Message>>) {
+    fn did_send_message(&mut self, message: Rc<RefCell<models::Message>>) {
         let message_controller = Message::new(message);
         self.container.pack_start(message_controller.borrow().view(), false, false, 0);
         self.view().show_all();
@@ -347,8 +375,8 @@ impl ConversationObserver for MessageEntry {
         signal::signal_handler_unblock(&self.view, self.changed_signal);
     }
 
-    fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) { }
-    fn did_send_message(&self, _: Rc<RefCell<models::Message>>) { }
+    fn did_receive_message(&mut self, _: Rc<RefCell<models::Message>>) { }
+    fn did_send_message(&mut self, _: Rc<RefCell<models::Message>>) { }
 }
 
 pub struct Conversation {
@@ -386,8 +414,8 @@ impl Conversation {
 impl ConversationObserver for Conversation {
     fn recipient_was_changed(&self, _: Option<comm::address::Address>) { }
     fn pending_message_was_changed(&self, _: String) { }
-    fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) { }
-    fn did_send_message(&self, _: Rc<RefCell<models::Message>>) { }
+    fn did_receive_message(&mut self, _: Rc<RefCell<models::Message>>) { }
+    fn did_send_message(&mut self, _: Rc<RefCell<models::Message>>) { }
 }
 
 pub struct ConversationListItemTitle {
@@ -425,8 +453,8 @@ impl ConversationObserver for ConversationListItemTitle {
     }
 
     fn pending_message_was_changed(&self, _: String) { }
-    fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) { }
-    fn did_send_message(&self, _: Rc<RefCell<models::Message>>) { }
+    fn did_receive_message(&mut self, _: Rc<RefCell<models::Message>>) { }
+    fn did_send_message(&mut self, _: Rc<RefCell<models::Message>>) { }
 }
 
 pub struct ConversationListItem {
@@ -436,8 +464,8 @@ pub struct ConversationListItem {
 impl ConversationObserver for ConversationListItem {
     fn recipient_was_changed(&self, _: Option<comm::address::Address>) { }
     fn pending_message_was_changed(&self, _: String) { }
-    fn did_receive_message(&self, _: Rc<RefCell<models::Message>>) { }
-    fn did_send_message(&self, _: Rc<RefCell<models::Message>>) { }
+    fn did_receive_message(&mut self, _: Rc<RefCell<models::Message>>) { }
+    fn did_send_message(&mut self, _: Rc<RefCell<models::Message>>) { }
 }
 
 impl ConversationListItem {
@@ -477,7 +505,7 @@ impl ConversationList {
         let cl = conversations.clone();
         view.connect_row_selected(move |_, list_item| {
             let index = list_item.as_ref().unwrap().get_index() as usize;
-            cl.borrow().select_conversation(index);
+            cl.borrow_mut().select_conversation(index);
         });
 
         let controller = Rc::new(RefCell::new(ConversationList {

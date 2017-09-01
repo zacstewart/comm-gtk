@@ -1,3 +1,7 @@
+.conversation_recipient__label {
+    padding: 11px;
+}
+
 .transcript {
     background-color: #fff;
     padding: 10px;

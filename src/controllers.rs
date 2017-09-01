@@ -101,8 +101,13 @@ impl ConversationRecipient {
         style.add_class("conversation_recipient__label");
 
         match conversation.borrow().recipient() {
-            Some(address) => entry.set_text(&address.to_str()),
-            None => entry.set_text("New Conversation")
+            Some(address) => {
+                entry.set_text(&address.to_str());
+                label.set_markup(&address.to_str());
+            }
+            None => {
+                entry.set_text("New Conversation");
+            }
         }
 
         let c = conversation.clone();
@@ -114,7 +119,11 @@ impl ConversationRecipient {
             }
         });
 
-        view.add(&entry);
+        if conversation.borrow().has_started() {
+            view.add(&label);
+        } else {
+            view.add(&entry);
+        }
 
         let controller = Rc::new(RefCell::new(ConversationRecipient {
             view: view,

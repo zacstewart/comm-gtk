@@ -249,6 +249,10 @@ impl Conversation {
         }
     }
 
+    pub fn has_started(&self) -> bool {
+        !self.messages.is_empty()
+    }
+
     pub fn messages(&self) -> &Vec<Rc<RefCell<Message>>> {
         &self.messages
     }

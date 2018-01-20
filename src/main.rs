@@ -56,8 +56,7 @@ fn main() {
     });
 
     let css_provider = gtk::CssProvider::new();
-    let display = gdk::Display::get_default().expect("Couldn't open default GDK display");
-    let screen = display.get_default_screen();
+    let screen = gdk::Screen::get_default().expect("Couldn't get default screen");
     gtk::StyleContext::add_provider_for_screen(&screen,
                                                &css_provider,
                                                gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);

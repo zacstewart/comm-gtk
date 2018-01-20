@@ -1,3 +1,4 @@
+use glib;
 use glib::signal;
 use gtk::prelude::*;
 use gtk;
@@ -337,7 +338,7 @@ impl ConversationObserver for Transcript {
 
 pub struct MessageEntry {
     view: gtk::Entry,
-    changed_signal: u64
+    changed_signal: glib::SignalHandlerId
 }
 
 impl MessageEntry {
@@ -387,9 +388,9 @@ impl ConversationObserver for MessageEntry {
     fn recipient_was_changed(&self, _: Option<comm::address::Address>) { }
 
     fn pending_message_was_changed(&self, pending_message: String) {
-        signal::signal_handler_block(&self.view, self.changed_signal);
+        signal::signal_handler_block(&self.view, &self.changed_signal);
         self.view.set_text(&pending_message);
-        signal::signal_handler_unblock(&self.view, self.changed_signal);
+        signal::signal_handler_unblock(&self.view, &self.changed_signal);
     }
 
     fn did_receive_message(&mut self, _: Rc<RefCell<models::Message>>) { }

@@ -15,11 +15,12 @@ use std::thread;
 mod models;
 mod controllers;
 
+
 fn main() {
     env_logger::init().unwrap();
 
     if gtk::init().is_err() {
-        println!("Failed to initialize GTK.");
+        error!("Failed to initialize GTK.");
         return;
     }
 
@@ -65,8 +66,8 @@ fn main() {
     main_window.connect_key_press_event(move |_, event| {
         if event.get_keyval() == 65474 { // F5
             match css_provider.load_from_path("resources/style.css") {
-                Ok(_) => { },
-                Err(err) => println!("Failed to load stylesheet: {}", err)
+                Ok(_) => debug!("Reloaded stylesheet"),
+                Err(err) => warn!("Failed to load stylesheet: {}", err)
             }
         }
         gtk::Inhibit(false)

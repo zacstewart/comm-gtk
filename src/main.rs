@@ -10,7 +10,8 @@ use gtk::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::mpsc;
-use std::thread;
+use std::{env, thread};
+use std::path::Path;
 
 mod models;
 mod controllers;
@@ -62,15 +63,21 @@ fn main() {
                                                &css_provider,
                                                gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
 
-    match css_provider.load_from_path("resources/style.css") {
-        Ok(_) => debug!("Loaded stylesheet"),
+    let resources_dir = env::var("COMM_RESOURCES_DIR")
+        .unwrap_or(String::from("resources"));
+    let resources_dir = Path::new(resources_dir.as_str());
+
+    let stylesheet_path = resources_dir.join("style.css");
+
+    match css_provider.load_from_path(stylesheet_path.to_str().unwrap()) {
+        Ok(_) => debug!("Loaded stylesheet: {:?}", stylesheet_path),
         Err(err) => warn!("Failed to load stylesheet: {}", err)
     }
 
     main_window.connect_key_press_event(move |_, event| {
         if event.get_keyval() == 65474 { // F5
-            match css_provider.load_from_path("resources/style.css") {
-                Ok(_) => debug!("Reloaded stylesheet"),
+            match css_provider.load_from_path(stylesheet_path.to_str().unwrap()) {
+                Ok(_) => debug!("Reloaded stylesheet: {:?}", stylesheet_path),
                 Err(err) => warn!("Failed to load stylesheet: {}", err)
             }
         }

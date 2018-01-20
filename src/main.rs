@@ -61,7 +61,11 @@ fn main() {
     gtk::StyleContext::add_provider_for_screen(&screen,
                                                &css_provider,
                                                gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
-    css_provider.load_from_path("resources/style.css").expect("Failed to load stylesheet");
+
+    match css_provider.load_from_path("resources/style.css") {
+        Ok(_) => debug!("Loaded stylesheet"),
+        Err(err) => warn!("Failed to load stylesheet: {}", err)
+    }
 
     main_window.connect_key_press_event(move |_, event| {
         if event.get_keyval() == 65474 { // F5

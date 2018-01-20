@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Dynamically discover canonical path to comm-gtk binary
+BIN_DIR=$(cd "$(dirname "$0")"; pwd)
+RESOURCES_DIR=$(cd "$(dirname "$0")"; cd "../Resources"; pwd)
+
+# Query OS for locale and setup comm shell to conform
+COMM_LOCALE="$(osascript -e "return user locale of (get system info)")"
+export LANG="${COMM_LOCALE}.UTF-8"
+export LC_CTYPE="${COMM_LOCALE}.UTF-8"
+
+export COMM_RESOURCES_DIR="$RESOURCES_DIR"
+
+# Start comm-gtk in user's home directory
+cd "$HOME"
+
+# Engage
+exec "$BIN_DIR/comm-gtk"

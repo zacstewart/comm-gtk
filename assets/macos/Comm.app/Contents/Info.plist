@@ -6,8 +6,8 @@
     <string>Comm</string>
     <key>CFBundleExecutable</key>
     <string>launcher</string>
-    <!-- <key>CFBundleIdentifier</key> -->
-    <!-- <string>comm-gtk</string> -->
+    <key>CFBundleIdentifier</key>
+    <string>comm</string>
     <key>CFBundleName</key>
     <string>Comm</string>
     <key>CFBundleIconFile</key>

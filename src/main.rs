@@ -1,12 +1,14 @@
+extern crate comm;
+extern crate env_logger;
+extern crate gdk;
+extern crate gio;
+extern crate glib;
+extern crate gtk;
 #[macro_use]
 extern crate log;
-extern crate gdk;
-extern crate glib;
-extern crate env_logger;
-extern crate comm;
-extern crate gtk;
 
 use gtk::prelude::*;
+use gio::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::mpsc;
@@ -20,17 +22,28 @@ mod controllers;
 fn main() {
     env_logger::init().unwrap();
 
-    if gtk::init().is_err() {
-        error!("Failed to initialize GTK.");
-        return;
-    }
+    let application = gtk::Application::new("com.zacstewart.comm",
+                                            gio::ApplicationFlags::empty())
+        .expect("Initialization failed...");
 
-    let main_window = gtk::Window::new(gtk::WindowType::Toplevel);
+    application.connect_startup(move |app| {
+        build_ui(app);
+        app.activate();
+    });
+    application.connect_activate(|_| {
+        debug!("Application activated");
+    });
+
+    application.run(&[]);
+}
+
+fn build_ui(application: &gtk::Application) {
+    let main_window = gtk::ApplicationWindow::new(application);
     main_window.set_title("Comm Messenger");
     main_window.set_default_size(700, 400);
     main_window.set_position(gtk::WindowPosition::Center);
-    main_window.connect_delete_event(|_, _| {
-        gtk::main_quit();
+    main_window.connect_delete_event(|win, _| {
+        win.destroy();
         gtk::Inhibit(true)
     });
 
@@ -83,8 +96,6 @@ fn main() {
         }
         gtk::Inhibit(false)
     });
-
-    gtk::main();
 }
 
 fn handle_event() -> glib::Continue {

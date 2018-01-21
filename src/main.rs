@@ -18,7 +18,6 @@ use std::path::Path;
 mod models;
 mod controllers;
 
-
 fn main() {
     env_logger::init().unwrap();
 
@@ -50,17 +49,19 @@ fn build_ui(application: &gtk::Application) {
     let configuration = Rc::new(RefCell::new(models::Configuration::empty()));
     let configuration_controller = controllers::Configuration::new(configuration.clone());
 
-    let (connection, events) = models::Connection::new(configuration);
+    let (connection, events) = models::Connection::new(configuration.clone());
     let conversations = Rc::new(RefCell::new(models::ConversationList::new(connection.clone())));
     let conversations_controller = controllers::Conversations::new(connection.clone(), conversations.clone());
-    main_window.add(conversations_controller.borrow().view());
 
+    let event_handler = models::EventHandler::new(configuration, conversations);
+
+    main_window.add(conversations_controller.borrow().view());
     main_window.show_all();
     configuration_controller.borrow().view().show_all();
 
     let (tx, rx) = mpsc::channel();
     GLOBAL.with(move |global| {
-        *global.borrow_mut() = Some((conversations, rx));
+        *global.borrow_mut() = Some((event_handler, rx));
     });
 
     thread::spawn(move || {
@@ -100,9 +101,9 @@ fn build_ui(application: &gtk::Application) {
 
 fn handle_event() -> glib::Continue {
     GLOBAL.with(|global| {
-        if let Some((ref conversations, ref events)) = *global.borrow() {
+        if let Some((ref event_handler, ref events)) = *global.borrow() {
             if let Ok(event) = events.try_recv() {
-                conversations.borrow_mut().handle_event(event);
+                event_handler.handle_event(event);
             }
         }
     });
@@ -110,5 +111,5 @@ fn handle_event() -> glib::Continue {
 }
 
 thread_local!(
-    pub static GLOBAL: RefCell<Option<(Rc<RefCell<models::ConversationList>>, comm::client::Events)>> = RefCell::new(None);
+    pub static GLOBAL: RefCell<Option<(models::EventHandler, comm::client::Events)>> = RefCell::new(None);
 );

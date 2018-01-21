@@ -391,3 +391,22 @@ impl Observable<Rc<RefCell<ConversationListObserver>>> for ConversationList {
         &mut self.observers
     }
 }
+
+pub struct EventHandler {
+    configuration: Rc<RefCell<Configuration>>,
+    conversations: Rc<RefCell<ConversationList>>
+}
+
+impl EventHandler {
+    pub fn new(configuration: Rc<RefCell<Configuration>>,
+               conversations: Rc<RefCell<ConversationList>>) -> EventHandler {
+        EventHandler {
+            configuration: configuration,
+            conversations: conversations
+        }
+    }
+
+    pub fn handle_event(&self, event: comm::client::Event) {
+        self.conversations.borrow_mut().handle_event(event);
+    }
+}

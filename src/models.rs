@@ -26,8 +26,8 @@ impl<O> ObserverSet<O> {
         id
     }
 
-    fn notify<F: Fn(&O)>(&mut self, function: F) {
-        for (_, observer) in self.observers.iter_mut() {
+    fn notify<F: Fn(&O)>(&self, function: F) {
+        for (_, observer) in self.observers.iter() {
             function(observer);
         }
     }

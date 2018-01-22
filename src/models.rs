@@ -65,11 +65,15 @@ pub trait MessageObserver {
     fn did_receieve_acknowledgement(&self);
 }
 
+pub trait ConfigurationObserver {
+    fn configuration_was_updated(&mut self, configuration: &Configuration);
+}
+
 pub struct Configuration {
     secret: Option<String>,
     router: Option<String>,
     port: Option<u16>,
-    observers: Vec<Rc<RefCell<Connection>>>
+    observers: ObserverSet<Rc<RefCell<ConfigurationObserver>>>
 }
 
 impl Configuration {
@@ -78,7 +82,7 @@ impl Configuration {
             secret: None,
             router: None,
             port: None,
-            observers: vec![]
+            observers: ObserverSet::new()
         }
     }
 
@@ -86,13 +90,9 @@ impl Configuration {
         self.secret = secret;
         self.router = router;
         self.port = port;
-        for observer in self.observers.iter() {
+        self.observers.notify(|observer| {
             observer.borrow_mut().configuration_was_updated(&self);
-        }
-    }
-
-    pub fn register_observer(&mut self, observer: Rc<RefCell<Connection>>) {
-        self.observers.push(observer);
+        });
     }
 
     fn secret(&self) -> &Option<String> {
@@ -105,6 +105,12 @@ impl Configuration {
 
     fn port(&self) -> &Option<u16> {
         &self.port
+    }
+}
+
+impl Observable<Rc<RefCell<ConfigurationObserver>>> for Configuration {
+    fn observers(&mut self) -> &mut ObserverSet<Rc<RefCell<ConfigurationObserver>>> {
+        &mut self.observers
     }
 }
 
@@ -138,7 +144,14 @@ impl Connection {
         self.self_address.unwrap()
     }
 
-    pub fn configuration_was_updated(&mut self, configuration: &Configuration) {
+    pub fn shutdown(&mut self) {
+        self.commands = None;
+        self.self_address = None;
+    }
+}
+
+impl ConfigurationObserver for Connection {
+    fn configuration_was_updated(&mut self, configuration: &Configuration) {
         if let Some(c) = self.commands.as_ref() {
             c.send(comm::client::Task::Shutdown).expect("Failed to send Shutdown");
             return;
@@ -160,11 +173,6 @@ impl Connection {
         let mut client = comm::client::Client::new(self.self_address.unwrap());
         client.register_event_listener(self.event_sender.clone());
         self.commands = Some(client.run(network));
-    }
-
-    pub fn shutdown(&mut self) {
-        self.commands = None;
-        self.self_address = None;
     }
 }
 

@@ -386,10 +386,13 @@ impl ConversationList {
                 }
             }
 
+            comm::client::Event::SentTextMessage(TextMessage) => { }
+
             comm::client::Event::Shutdown => {
                 self.connection.borrow_mut().shutdown();
             }
-            _ => { }
+
+            comm::client::Event::Started => { }
         }
     }
 }

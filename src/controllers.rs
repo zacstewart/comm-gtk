@@ -43,7 +43,7 @@ impl Configuration {
                             gtk::PositionType::Right,
                             100, 12);
 
-        let port_label = gtk::Label::new("Local Port");
+        let port_label = gtk::Label::new("Local port");
         port_label.set_halign(gtk::Align::Start);
         let port_entry = gtk::Entry::new();
         grid.attach_next_to(&port_label,

@@ -418,6 +418,7 @@ impl EventHandler {
     }
 
     pub fn handle_event(&self, event: comm::client::Event) {
-        self.conversations.borrow_mut().handle_event(event);
+        debug!("Received event: {:?}", event.clone());
+        self.conversations.borrow_mut().handle_event(event.clone());
     }
 }

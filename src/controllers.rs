@@ -9,14 +9,17 @@ use comm;
 use comm::address;
 
 use models;
-use models::{ConversationListObserver, ConversationObserver, MessageObserver, Observable};
+use models::{ConnectionObserver, ConversationListObserver, ConversationObserver, MessageObserver,
+    Observable};
 
 pub struct Configuration {
-    view: gtk::Window
+    view: gtk::Window,
+    connect_button: gtk::Button
 }
 
 impl Configuration {
-    pub fn new(configuration: Rc<RefCell<models::Configuration>>) -> Rc<RefCell<Configuration>> {
+    pub fn new(connection: Rc<RefCell<models::Connection>>,
+               configuration: Rc<RefCell<models::Configuration>>) -> Rc<RefCell<Configuration>> {
         let view = gtk::Window::new(gtk::WindowType::Toplevel);
         view.set_title("Configuration");
         view.set_position(gtk::WindowPosition::Center);
@@ -61,28 +64,61 @@ impl Configuration {
         container.pack_start(&grid, false, false, 0);
         container.pack_start(&connect_button, false, false, 0);
 
-        let c = configuration.clone();
-        connect_button.connect_clicked(move |_| {
-            c.borrow_mut().update(
-                secret_entry.get_text(),
-                bootstrap_entry.get_text(),
-                port_entry.get_text().and_then(|port| u16::from_str(port.as_str()).ok())
-            );
-        });
-
         view.connect_delete_event(|_,_| {
             gtk::Inhibit(true)
         });
 
         view.add(&container);
 
-        Rc::new(RefCell::new(Configuration {
-            view: view
-        }))
+        let conn = connection.clone();
+        let conf = configuration.clone();
+        connect_button.connect_clicked(move |button| {
+            let state = conn.borrow().state();
+            match state {
+                models::ConnectionState::Stopped => {
+                    conf.borrow_mut().update(
+                        secret_entry.get_text(),
+                        bootstrap_entry.get_text(),
+                        port_entry.get_text().and_then(|port| u16::from_str(port.as_str()).ok())
+                        );
+                    conn.borrow_mut().start(conf.borrow());
+                    button.set_sensitive(false);
+                }
+
+                models::ConnectionState::Running => {
+                    conn.borrow_mut().shutdown();
+                    button.set_sensitive(false);
+                }
+
+                // Connection is in the process of Starting or Stopping. Leave it alone.
+                _ => { }
+            }
+        });
+
+        let controller = Rc::new(RefCell::new(Configuration {
+            view: view,
+            connect_button: connect_button
+        }));
+
+        connection.borrow_mut().register_observer(controller.clone());
+
+        controller
     }
 
     pub fn view(&self) -> &gtk::Window {
         &self.view
+    }
+}
+
+impl ConnectionObserver for Configuration {
+    fn connection_started(&mut self, _connection: &models::Connection) {
+        self.connect_button.set_label("Disconnect");
+        self.connect_button.set_sensitive(true);
+    }
+
+    fn connection_shutdown(&mut self, _connection: &models::Connection) {
+        self.connect_button.set_label("Connect");
+        self.connect_button.set_sensitive(true);
     }
 }
 

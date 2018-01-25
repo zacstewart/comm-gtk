@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::mpsc;
@@ -65,15 +65,10 @@ pub trait MessageObserver {
     fn did_receieve_acknowledgement(&self);
 }
 
-pub trait ConfigurationObserver {
-    fn configuration_was_updated(&mut self, configuration: &Configuration);
-}
-
 pub struct Configuration {
     secret: Option<String>,
     router: Option<String>,
-    port: Option<u16>,
-    observers: ObserverSet<Rc<RefCell<ConfigurationObserver>>>
+    port: Option<u16>
 }
 
 impl Configuration {
@@ -81,8 +76,7 @@ impl Configuration {
         Configuration {
             secret: None,
             router: None,
-            port: None,
-            observers: ObserverSet::new()
+            port: None
         }
     }
 
@@ -90,9 +84,6 @@ impl Configuration {
         self.secret = secret;
         self.router = router;
         self.port = port;
-        self.observers.notify(|observer| {
-            observer.borrow_mut().configuration_was_updated(&self);
-        });
     }
 
     fn secret(&self) -> &Option<String> {
@@ -108,30 +99,39 @@ impl Configuration {
     }
 }
 
-impl Observable<Rc<RefCell<ConfigurationObserver>>> for Configuration {
-    fn observers(&mut self) -> &mut ObserverSet<Rc<RefCell<ConfigurationObserver>>> {
-        &mut self.observers
-    }
+#[derive(Clone, Copy)]
+pub enum ConnectionState {
+    Running,
+    Starting,
+    Stopped,
+    Stopping
+}
+
+pub trait ConnectionObserver {
+    fn connection_started(&mut self, connection: &Connection);
+    fn connection_shutdown(&mut self, connection: &Connection);
 }
 
 pub struct Connection {
     event_sender: mpsc::Sender<comm::client::Event>,
     commands: Option<comm::client::TaskSender>,
-    self_address: Option<comm::address::Address>
+    self_address: Option<comm::address::Address>,
+    state: ConnectionState,
+    observers: ObserverSet<Rc<RefCell<ConnectionObserver>>>
 }
 
 impl Connection {
-    pub fn new(configuration: Rc<RefCell<Configuration>>) -> (Rc<RefCell<Connection>>, comm::client::Events) {
+    pub fn new() -> (Rc<RefCell<Connection>>, comm::client::Events) {
 
         let (event_sender, events) = mpsc::channel();
 
         let connection = Rc::new(RefCell::new(Connection {
             event_sender: event_sender,
             commands: None,
-            self_address: None
+            self_address: None,
+            state: ConnectionState::Stopped,
+            observers: ObserverSet::new()
         }));
-
-        configuration.borrow_mut().register_observer(connection.clone());
 
         (connection, events)
     }
@@ -145,18 +145,13 @@ impl Connection {
     }
 
     pub fn shutdown(&mut self) {
-        self.commands = None;
-        self.self_address = None;
-    }
-}
-
-impl ConfigurationObserver for Connection {
-    fn configuration_was_updated(&mut self, configuration: &Configuration) {
         if let Some(c) = self.commands.as_ref() {
             c.send(comm::client::Task::Shutdown).expect("Failed to send Shutdown");
-            return;
+            self.state = ConnectionState::Stopping;
         }
+    }
 
+    pub fn start(&mut self, configuration: Ref<Configuration>) {
         self.self_address = configuration.secret().as_ref().map(|ref s| comm::address::Address::for_content(s.as_str()));
 
         let host = ("0.0.0.0", configuration.port().unwrap());
@@ -173,6 +168,33 @@ impl ConfigurationObserver for Connection {
         let mut client = comm::client::Client::new(self.self_address.unwrap());
         client.register_event_listener(self.event_sender.clone());
         self.commands = Some(client.run(network));
+        self.state = ConnectionState::Starting;
+    }
+
+    pub fn state(&self) -> ConnectionState {
+        self.state
+    }
+
+    fn handle_shutdown(&mut self) {
+        self.state = ConnectionState::Stopped;
+        self.commands = None;
+        self.self_address = None;
+        self.observers.notify(|observer| {
+            observer.borrow_mut().connection_shutdown(&self);
+        });
+    }
+
+    fn handle_started(&mut self) {
+        self.state = ConnectionState::Running;
+        self.observers.notify(|observer| {
+            observer.borrow_mut().connection_started(&self);
+        });
+    }
+}
+
+impl Observable<Rc<RefCell<ConnectionObserver>>> for Connection {
+    fn observers(&mut self) -> &mut ObserverSet<Rc<RefCell<ConnectionObserver>>> {
+        &mut self.observers
     }
 }
 
@@ -386,13 +408,17 @@ impl ConversationList {
                 }
             }
 
-            comm::client::Event::SentTextMessage(TextMessage) => { }
+            comm::client::Event::SentTextMessage(_) => { }
 
+            // This is totally out of place. The Connection aught to be in the event handler.
             comm::client::Event::Shutdown => {
-                self.connection.borrow_mut().shutdown();
+                self.connection.borrow_mut().handle_shutdown();
             }
 
-            comm::client::Event::Started => { }
+            // This is totally out of place. The Connection aught to be in the event handler.
+            comm::client::Event::Started => {
+                self.connection.borrow_mut().handle_started();
+            }
         }
     }
 }
@@ -404,15 +430,12 @@ impl Observable<Rc<RefCell<ConversationListObserver>>> for ConversationList {
 }
 
 pub struct EventHandler {
-    configuration: Rc<RefCell<Configuration>>,
     conversations: Rc<RefCell<ConversationList>>
 }
 
 impl EventHandler {
-    pub fn new(configuration: Rc<RefCell<Configuration>>,
-               conversations: Rc<RefCell<ConversationList>>) -> EventHandler {
+    pub fn new(conversations: Rc<RefCell<ConversationList>>) -> EventHandler {
         EventHandler {
-            configuration: configuration,
             conversations: conversations
         }
     }

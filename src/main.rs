@@ -47,13 +47,13 @@ fn build_ui(application: &gtk::Application) {
     });
 
     let configuration = Rc::new(RefCell::new(models::Configuration::empty()));
-    let configuration_controller = controllers::Configuration::new(configuration.clone());
-
-    let (connection, events) = models::Connection::new(configuration.clone());
+    let (connection, events) = models::Connection::new();
     let conversations = Rc::new(RefCell::new(models::ConversationList::new(connection.clone())));
+
+    let configuration_controller = controllers::Configuration::new(connection.clone(), configuration.clone());
     let conversations_controller = controllers::Conversations::new(connection.clone(), conversations.clone());
 
-    let event_handler = models::EventHandler::new(configuration, conversations);
+    let event_handler = models::EventHandler::new(conversations);
 
     main_window.add(conversations_controller.borrow().view());
     main_window.show_all();

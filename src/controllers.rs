@@ -20,6 +20,8 @@ pub struct Configuration {
 impl Configuration {
     pub fn new(connection: Rc<RefCell<models::Connection>>,
                configuration: Rc<RefCell<models::Configuration>>) -> Rc<RefCell<Configuration>> {
+        // Build UI
+
         let view = gtk::Window::new(gtk::WindowType::Toplevel);
         view.set_title("Configuration");
         view.set_position(gtk::WindowPosition::Center);
@@ -70,6 +72,22 @@ impl Configuration {
 
         view.add(&container);
 
+        // Load view state from config
+
+        if let &Some(ref secret) = configuration.borrow().secret() {
+            secret_entry.set_text(secret);
+        }
+
+        if let &Some(ref router) = configuration.borrow().router() {
+            bootstrap_entry.set_text(router);
+        }
+
+        if let &Some(ref port) = configuration.borrow().port() {
+            port_entry.set_text(&port.to_string());
+        }
+
+        // Connect view event signals
+
         let conn = connection.clone();
         let conf = configuration.clone();
         connect_button.connect_clicked(move |button| {
@@ -99,6 +117,8 @@ impl Configuration {
             view: view,
             connect_button: connect_button
         }));
+
+        // Ovserve connection model
 
         connection.borrow_mut().register_observer(controller.clone());
 

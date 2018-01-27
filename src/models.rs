@@ -1,7 +1,10 @@
 use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
+use std::path;
 use std::rc::Rc;
 use std::sync::mpsc;
+use std::fs;
+use serde_yaml;
 
 use comm::address::Address;
 use comm;
@@ -65,6 +68,7 @@ pub trait MessageObserver {
     fn did_receieve_acknowledgement(&self);
 }
 
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Configuration {
     secret: Option<String>,
     router: Option<String>,
@@ -72,6 +76,13 @@ pub struct Configuration {
 }
 
 impl Configuration {
+    pub fn load_from_config_or_empty(config_file_path: path::PathBuf) -> Configuration {
+        debug!("Loading config from {:?}", config_file_path);
+        fs::File::open(config_file_path).ok()
+            .and_then(|file| serde_yaml::from_reader(file).ok())
+            .unwrap_or_else(|| Self::empty())
+    }
+
     pub fn empty() -> Configuration {
         Configuration {
             secret: None,
@@ -86,15 +97,15 @@ impl Configuration {
         self.port = port;
     }
 
-    fn secret(&self) -> &Option<String> {
+    pub fn secret(&self) -> &Option<String> {
         &self.secret
     }
 
-    fn router(&self) -> &Option<String> {
+    pub fn router(&self) -> &Option<String> {
         &self.router
     }
 
-    fn port(&self) -> &Option<u16> {
+    pub fn port(&self) -> &Option<u16> {
         &self.port
     }
 }

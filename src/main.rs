@@ -1,11 +1,12 @@
+#[macro_use] extern crate log;
+#[macro_use] extern crate serde_derive;
 extern crate comm;
 extern crate env_logger;
 extern crate gdk;
 extern crate gio;
 extern crate glib;
 extern crate gtk;
-#[macro_use]
-extern crate log;
+extern crate serde_yaml;
 
 use gtk::prelude::*;
 use gio::prelude::*;
@@ -13,7 +14,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::mpsc;
 use std::{env, thread};
-use std::path::Path;
+use std::path;
 
 mod models;
 mod controllers;
@@ -46,7 +47,7 @@ fn build_ui(application: &gtk::Application) {
         gtk::Inhibit(true)
     });
 
-    let configuration = Rc::new(RefCell::new(models::Configuration::empty()));
+    let configuration = Rc::new(RefCell::new(models::Configuration::load_from_config_or_empty(config_file())));
     let (connection, events) = models::Connection::new();
     let conversations = Rc::new(RefCell::new(models::ConversationList::new(connection.clone())));
 
@@ -79,7 +80,7 @@ fn build_ui(application: &gtk::Application) {
 
     let resources_dir = env::var("COMM_RESOURCES_DIR")
         .unwrap_or(String::from("resources"));
-    let resources_dir = Path::new(resources_dir.as_str());
+    let resources_dir = path::Path::new(resources_dir.as_str());
 
     let stylesheet_path = resources_dir.join("style.css");
 
@@ -97,6 +98,17 @@ fn build_ui(application: &gtk::Application) {
         }
         gtk::Inhibit(false)
     });
+}
+
+fn config_file() -> path::PathBuf {
+    match env::var("COMM_RESOURCES_DIR") {
+        Ok(path) => path::PathBuf::from(path.as_str()),
+        Err(_) => {
+            let home = env::var("HOME").expect("No $HOME environment variable set");
+            let home = path::Path::new(home.as_str());
+            home.join(".config/comm/comm.yml")
+        }
+    }
 }
 
 fn handle_event() -> glib::Continue {

@@ -4,7 +4,9 @@ use std::path;
 use std::rc::Rc;
 use std::sync::mpsc;
 use std::fs;
+use std::io;
 use serde_yaml;
+use std::io::{Error, ErrorKind};
 
 use comm::address::Address;
 use comm;
@@ -95,6 +97,22 @@ impl Configuration {
         self.secret = secret;
         self.router = router;
         self.port = port;
+    }
+
+    pub fn save(&self, config_file_path: path::PathBuf) -> io::Result<()> {
+        use std::io::prelude::*;
+        debug!("Loading config from {:?}", config_file_path);
+        match serde_yaml::to_string(self) {
+            Ok(yaml) => {
+                fs::File::create(config_file_path)
+                    .and_then(|mut file| file.write_all(&yaml.into_bytes()))
+            }
+
+            Err(err) => {
+                warn!("Failed to save configuration");
+                Err(Error::new(ErrorKind::Other, err))
+            }
+        }
     }
 
     pub fn secret(&self) -> &Option<String> {

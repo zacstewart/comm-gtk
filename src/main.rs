@@ -47,11 +47,12 @@ fn build_ui(application: &gtk::Application) {
         gtk::Inhibit(true)
     });
 
-    let configuration = Rc::new(RefCell::new(models::Configuration::load_from_config_or_empty(config_file())));
+    let config_file_path = config_file();
+    let configuration = Rc::new(RefCell::new(models::Configuration::load_from_config_or_empty(config_file_path.clone())));
     let (connection, events) = models::Connection::new();
     let conversations = Rc::new(RefCell::new(models::ConversationList::new(connection.clone())));
 
-    let configuration_controller = controllers::Configuration::new(connection.clone(), configuration.clone());
+    let configuration_controller = controllers::Configuration::new(connection.clone(), configuration.clone(), config_file_path);
     let conversations_controller = controllers::Conversations::new(connection.clone(), conversations.clone());
 
     let event_handler = models::EventHandler::new(conversations);

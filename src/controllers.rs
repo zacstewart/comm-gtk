@@ -1,12 +1,14 @@
-use glib;
 use glib::signal;
+use glib;
 use gtk::prelude::*;
 use gtk;
 use std::cell::RefCell;
+use std::path;
 use std::rc::Rc;
 use std::str::FromStr;
-use comm;
+
 use comm::address;
+use comm;
 
 use models;
 use models::{ConnectionObserver, ConversationListObserver, ConversationObserver, MessageObserver,
@@ -19,7 +21,8 @@ pub struct Configuration {
 
 impl Configuration {
     pub fn new(connection: Rc<RefCell<models::Connection>>,
-               configuration: Rc<RefCell<models::Configuration>>) -> Rc<RefCell<Configuration>> {
+               configuration: Rc<RefCell<models::Configuration>>,
+               config_file_path: path::PathBuf) -> Rc<RefCell<Configuration>> {
         // Build UI
 
         let view = gtk::Window::new(gtk::WindowType::Toplevel);
@@ -99,6 +102,7 @@ impl Configuration {
                         bootstrap_entry.get_text(),
                         port_entry.get_text().and_then(|port| u16::from_str(port.as_str()).ok())
                         );
+                    conf.borrow().save(config_file_path.clone());
                     conn.borrow_mut().start(conf.borrow());
                     button.set_sensitive(false);
                 }

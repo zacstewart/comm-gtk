@@ -619,6 +619,8 @@ pub struct Conversations {
 
 impl Conversations {
     pub fn new(connection: Rc<RefCell<models::Connection>>, conversations: Rc<RefCell<models::ConversationList>>) -> Rc<RefCell<Conversations>> {
+        // Build UI
+
         let view = gtk::Paned::new(gtk::Orientation::Horizontal);
 
         view.set_position(300);
@@ -638,9 +640,12 @@ impl Conversations {
         sidebar_pane.pack1(&search_add_pane, false, false);
         sidebar_pane.add2(conversation_list_controller.borrow().view());
 
+        // Connect view event signals
+
         let c = conversations.clone();
+        let conn = connection.clone();
         new_conversation_button.connect_clicked(move |_| {
-            let conversation = Rc::new(RefCell::new(models::Conversation::new(connection.clone())));
+            let conversation = Rc::new(RefCell::new(models::Conversation::new(conn.clone())));
             c.borrow_mut().add_conversation(conversation);
             c.borrow_mut().select_conversation(0);
         });
@@ -650,9 +655,16 @@ impl Conversations {
         }));
 
         let observer_id = conversations.borrow_mut().register_observer(controller.clone());
+        let c = conversations.clone();
         controller.borrow().view().connect_destroy(move |_| {
-            conversations.borrow_mut().deregister_observer(&observer_id);
+            c.borrow_mut().deregister_observer(&observer_id);
         });
+
+        // Add initial new conversation
+
+        let conversation = Rc::new(RefCell::new(models::Conversation::new(connection.clone())));
+        conversations.borrow_mut().add_conversation(conversation);
+        conversations.borrow_mut().select_conversation(0);
 
         controller
     }

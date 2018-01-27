@@ -102,7 +102,7 @@ impl Configuration {
                         bootstrap_entry.get_text(),
                         port_entry.get_text().and_then(|port| u16::from_str(port.as_str()).ok())
                         );
-                    conf.borrow().save(config_file_path.clone());
+                    conf.borrow().save(config_file_path.clone()).expect("Failed to save configuration");
                     conn.borrow_mut().start(conf.borrow());
                     button.set_sensitive(false);
                 }

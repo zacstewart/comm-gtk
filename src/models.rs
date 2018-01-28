@@ -180,24 +180,49 @@ impl Connection {
         }
     }
 
-    pub fn start(&mut self, configuration: Ref<Configuration>) {
-        self.self_address = configuration.secret().as_ref().map(|ref s| comm::address::Address::for_content(s.as_str()));
-
-        let host = ("0.0.0.0", configuration.port().unwrap());
-
-        let routers: Vec<comm::node::Node> = match configuration.router().as_ref() {
-            Some(r) => {
-                let router_node = comm::node::Node::new(comm::address::Address::null(), r.as_str());
-                vec![router_node]
+    pub fn start(&mut self, configuration: Ref<Configuration>) -> Result<(), String> {
+        let self_address;
+        match configuration.secret().as_ref() {
+            Some(s) => {
+                self_address = comm::address::Address::for_content(s.as_str());
             }
-            None => vec![]
-        };
 
-        let network = comm::network::Network::new(self.self_address.unwrap(), host, routers);
-        let mut client = comm::client::Client::new(self.self_address.unwrap());
+            None => {
+                return Err(String::from("Invalid secret provided"));
+            }
+        }
+
+        let host;
+        if let &Some(port) = configuration.port() {
+            host = ("0.0.0.0", port);
+        } else {
+            return Err(String::from("Invalid port provided"));
+        }
+
+
+        let mut routers: Vec<comm::node::Node> = Vec::new();
+        match configuration.router().as_ref().and_then(|r| {
+            comm::node::Node::from_socket_addrs(comm::address::Address::null(), r.as_str()).ok()
+        }) {
+            Some(r) => {
+                routers.push(r);
+            }
+            None => {
+                // This is still a valid client, but they will not be connected to the network
+                // until someone uses them as a bootstrap node.
+                warn!("No routers were provided");
+            }
+        }
+
+        let network = comm::network::Network::new(self_address, host, routers);
+        let mut client = comm::client::Client::new(self_address);
         client.register_event_listener(self.event_sender.clone());
+
+        self.self_address = Some(self_address);
         self.commands = Some(client.run(network));
         self.state = ConnectionState::Starting;
+
+        Ok(())
     }
 
     pub fn state(&self) -> ConnectionState {

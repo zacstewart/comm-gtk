@@ -101,7 +101,7 @@ impl Configuration {
 
     pub fn save(&self, config_file_path: path::PathBuf) -> io::Result<()> {
         use std::io::prelude::*;
-        debug!("Loading config from {:?}", config_file_path);
+        debug!("Saving config to {:?}", config_file_path);
         match serde_yaml::to_string(self) {
             Ok(yaml) => {
                 fs::File::create(config_file_path)

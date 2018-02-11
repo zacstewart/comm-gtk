@@ -102,7 +102,7 @@ fn build_ui(application: &gtk::Application) {
 }
 
 fn config_file() -> path::PathBuf {
-    match env::var("COMM_RESOURCES_DIR") {
+    match env::var("COMM_CONFIG_DIR") {
         Ok(path) => path::PathBuf::from(path.as_str()),
         Err(_) => {
             let home = env::var("HOME").expect("No $HOME environment variable set");

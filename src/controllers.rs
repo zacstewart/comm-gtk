@@ -627,8 +627,8 @@ impl Conversations {
 
         view.set_position(300);
 
-        let sidebar_pane = gtk::Paned::new(gtk::Orientation::Vertical);
-        view.add1(&sidebar_pane);
+        let sidebar = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        view.add1(&sidebar);
         let search_add_pane = gtk::Paned::new(gtk::Orientation::Horizontal);
 
         let search = gtk::SearchEntry::new();
@@ -639,8 +639,8 @@ impl Conversations {
 
         let conversation_list_controller = ConversationList::new(conversations.clone());
 
-        sidebar_pane.pack1(&search_add_pane, false, false);
-        sidebar_pane.add2(conversation_list_controller.borrow().view());
+        sidebar.pack_start(&search_add_pane, false, false, 0);
+        sidebar.pack_start(conversation_list_controller.borrow().view(), true, true, 0);
 
         // Connect view event signals
 

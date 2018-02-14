@@ -1,5 +1,6 @@
 use glib::signal;
 use glib;
+use gdk;
 use gtk::prelude::*;
 use gtk;
 use std::cell::RefCell;
@@ -145,6 +146,60 @@ impl ConnectionObserver for Configuration {
     fn connection_shutdown(&mut self, _connection: &models::Connection) {
         self.connect_button.set_label("Connect");
         self.connect_button.set_sensitive(true);
+    }
+}
+
+struct ConnectionStatus {
+    view: gtk::Box,
+    self_address_entry: gtk::Entry,
+    self_address: Option<String>
+}
+
+impl ConnectionStatus {
+    fn new(connection: Rc<RefCell<models::Connection>>) -> Rc<RefCell<ConnectionStatus>> {
+        let view = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+        let self_address_entry = gtk::Entry::new();
+        self_address_entry.set_sensitive(false);
+        self_address_entry.set_tooltip_text("Your address");
+        let copy_self_address = gtk::Button::new_from_icon_name("edit-copy", 2);
+        copy_self_address.set_tooltip_text("Copy your address to clipboard");
+        view.pack_start(&self_address_entry, true, true, 0);
+        view.pack_start(&copy_self_address, false, false, 0);
+
+        let controller = Rc::new(RefCell::new(Self {
+            view: view,
+            self_address_entry: self_address_entry,
+            self_address: None
+        }));
+
+        // Connect view event signals
+
+        let c = controller.clone();
+        copy_self_address.connect_clicked(move |_| {
+            if let Some(ref self_address) = c.borrow().self_address {
+                let clipboard = gtk::Clipboard::get(&gdk::Atom::intern("CLIPBOARD"));
+                clipboard.set_text(&self_address);
+            }
+        });
+
+        connection.borrow_mut().register_observer(controller.clone());
+
+        controller
+    }
+
+    fn view(&self) -> &gtk::Box {
+        &self.view
+    }
+}
+
+impl ConnectionObserver for ConnectionStatus {
+    fn connection_started(&mut self, connection: &models::Connection) {
+        let self_address = connection.self_address().to_str();
+        self.self_address_entry.set_text(&self_address);
+        self.self_address = Some(self_address);
+    }
+
+    fn connection_shutdown(&mut self, _connection: &models::Connection) {
     }
 }
 
@@ -625,7 +680,7 @@ impl Conversations {
 
         let view = gtk::Paned::new(gtk::Orientation::Horizontal);
 
-        view.set_position(300);
+        view.set_position(310);
 
         let sidebar = gtk::Box::new(gtk::Orientation::Vertical, 0);
         view.add1(&sidebar);
@@ -638,9 +693,11 @@ impl Conversations {
         search_add_pane.pack2(&new_conversation_button, false, false);
 
         let conversation_list_controller = ConversationList::new(conversations.clone());
+        let connection_status_controller = ConnectionStatus::new(connection.clone());
 
         sidebar.pack_start(&search_add_pane, false, false, 0);
         sidebar.pack_start(conversation_list_controller.borrow().view(), true, true, 0);
+        sidebar.pack_start(connection_status_controller.borrow().view(), false, false, 0);
 
         // Connect view event signals
 

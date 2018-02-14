@@ -1,5 +1,7 @@
 # comm-gtk
 
+![Conversations](demo.gif)
+
 comm is a peer-to-peer instant messaging protocol designed to be resilient to
 censorship. comm-gtk is a GUI client built on the [comm][comm library]. To try
 it out, start the app. In the configuration window, enter a secret phrase, a
@@ -13,8 +15,6 @@ Grab your address by clicking the copy button in the lower-left corner and
 share it. Strike up conversation with a friend by putting their address in
 the "New Conversation" input. Start new conversations by clicking the button
 towards the upper-left corner.
-
-![Conversations](demo.gif)
 
 This instant messaging network is likely to be a lonely place, but you can try
 messaging me at my address:

@@ -23,7 +23,7 @@ messaging me at my address:
 
 ## Installation
 
-Grab a build from GitHub, or if you want to build it yourself:
+Grab a [release][latest-release] from GitHub, or if you want to build it yourself:
 
 ### MacOS
 
@@ -59,3 +59,4 @@ traversal. Sharing images? Idk. [Want to help?](mailto:zgstewart@gmail.com).
 
 [comm]: https://github.com/zacstewart/comm
 [libsignal]: https://github.com/signalapp/libsignal-protocol-c
+[latest-release]: https://github.com/zacstewart/comm-gtk/releases/tag/v0.1.0

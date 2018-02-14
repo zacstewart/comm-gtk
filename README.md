@@ -3,7 +3,7 @@
 ![Conversations](demo.gif)
 
 comm is a peer-to-peer instant messaging protocol designed to be resilient to
-censorship. comm-gtk is a GUI client built on the [comm][comm library]. To try
+censorship. comm-gtk is a GUI client built on the [comm library][comm]. To try
 it out, start the app. In the configuration window, enter a secret phrase, a
 bootstrap node (`IP:port` pair), and a local port to listen on (e.g. 6669). For
 a bootstrap node, try `165.227.114.200:6667` (or any other node's IP address if
